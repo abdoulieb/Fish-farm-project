@@ -211,12 +211,16 @@ $inventory = $stmt->fetchAll();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d426.3555215998874!2d-16.581948620765203!3d13.275459520868738!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xec2a1274709760f%3A0x8b68002e434944b8!2sKuloro!5e1!3m2!1sen!2sgm!4v1742995136730!5m2!1sen!2sgm" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     <script>
         // Initialize Google Map
         function initMap() {
             const farmLocation = {
-                lat: 6.5244,
-                lng: 3.3792
+
+
+                lat: 13.275488306734001,
+                lng: -16.58196087225515
+
             }; // Replace with your farm's coordinates
             const map = new google.maps.Map(document.getElementById("map"), {
                 zoom: 15,
