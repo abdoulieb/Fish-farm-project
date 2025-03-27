@@ -15,204 +15,620 @@ $inventory = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Our Fish Farm</title>
+    <title>Premium Fish Farm - Bah & Brothers | Fresh Catfish & Tilapia</title>
+    <meta name="description" content="Bah & Brothers Fish Farm - Premium quality catfish and tilapia from our eco-friendly ponds in The Gambia">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #198754;
+            --accent-color: #ffc107;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            scroll-behavior: smooth;
+        }
+
         .hero-section {
-            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('fish-farm-bg.jpg');
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('images/fish2.jpg');
             background-size: cover;
             background-position: center;
+            background-attachment: fixed;
             color: white;
-            padding: 100px 0;
+            padding: 150px 0;
             text-align: center;
+            position: relative;
+        }
+
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, white);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .nav-shadow {
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 40px;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--primary-color);
         }
 
         .fish-card {
-            transition: transform 0.3s;
+            transition: all 0.3s ease;
             height: 100%;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
         }
 
         .fish-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .fish-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .fish-card:hover .fish-icon {
+            transform: scale(1.2);
+            color: var(--secondary-color);
         }
 
         .contact-form {
             background-color: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         }
 
         #map {
             height: 400px;
             width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 5px solid white;
+        }
+
+        .feature-box {
+            text-align: center;
+            padding: 30px 20px;
             border-radius: 10px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .feature-box:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .testimonial-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .testimonial-card::before {
+            content: '\201C';
+            font-family: Georgia, serif;
+            font-size: 60px;
+            color: rgba(13, 110, 253, 0.1);
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        .testimonial-author {
+            font-weight: bold;
+            margin-top: 20px;
+            color: var(--primary-color);
+        }
+
+        .social-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .social-icon:hover {
+            background: var(--accent-color);
+            transform: translateY(-3px);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            padding: 10px 25px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-outline-light {
+            padding: 10px 25px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .floating-action-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 5px 20px rgba(13, 110, 253, 0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .floating-action-btn:hover {
+            transform: scale(1.1);
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 5px 20px rgba(25, 135, 84, 0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .back-to-top.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
         }
     </style>
 </head>
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top nav-shadow">
         <div class="container">
             <a class="navbar-brand" href="welcome.php">
-                <i class="fas fa-fish"></i> Bah & Brothers Fish Farm
+                <i class="fas fa-fish me-2"></i> <strong>Bah & Brothers</strong>
             </a>
-            <div class="ml-auto">
-                <a href="login.php" class="btn btn-outline-light me-2">Login</a>
-                <a href="register.php" class="btn btn-light">Register</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#products">Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#location">Location</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="login.php" class="btn btn-outline-light me-2">Login</a>
+                    <a href="register.php" class="btn btn-light">Register</a>
+                </div>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero-section mb-5">
+    <section class="hero-section" id="home">
+        <div class="container hero-content">
+            <h1 class="display-3 fw-bold mb-3 animate__animated animate__fadeInDown">Bah & Brothers Fish Farm</h1>
+            <p class="lead mb-4 fs-4 animate__animated animate__fadeIn animate__delay-1s">Premium quality catfish and tilapia straight from our eco-friendly ponds</p>
+            <div class="animate__animated animate__fadeIn animate__delay-2s">
+                <a href="#products" class="btn btn-primary btn-lg me-3">Our Products</a>
+                <a href="#contact" class="btn btn-outline-light btn-lg">Contact Us</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-5 bg-light">
         <div class="container">
-            <h1 class="display-4 fw-bold mb-3">Bah and Brothers Fish Farm</h1>
-            <p class="lead mb-4">Premium quality catfish and tilapia straight from our ponds</p>
-            <a href="#products" class="btn btn-primary btn-lg me-2">Our Products</a>
-            <a href="#contact" class="btn btn-outline-light btn-lg">Contact Us</a>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-box animate__animated animate__fadeInUp">
+                        <div class="feature-icon">
+                            <i class="fas fa-leaf"></i>
+                        </div>
+                        <h3>Eco-Friendly</h3>
+                        <p>Sustainably raised fish using environmentally responsible practices that protect our ecosystem.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-box animate__animated animate__fadeInUp animate__delay-1s">
+                        <div class="feature-icon">
+                            <i class="fas fa-award"></i>
+                        </div>
+                        <h3>Premium Quality</h3>
+                        <p>Highest quality fish with strict quality control measures from pond to plate.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-box animate__animated animate__fadeInUp animate__delay-2s">
+                        <div class="feature-icon">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                        <h3>Fast Delivery</h3>
+                        <p>Fresh delivery to your doorstep within 24 hours of harvest for maximum freshness.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- About Section -->
-    <section class="container mb-5">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h2 class="mb-4">About Our Farm</h2>
-                <p class="lead">We've been raising healthy, sustainable fish for over 10 years using eco-friendly practices.</p>
-                <p>Our farm spans 5 acres with state-of-the-art pond systems that ensure optimal growth conditions for our fish. We take pride in delivering the freshest products to our customers.</p>
+    <section class="py-5" id="about">
+        <div class="container">
+            <h2 class="text-center section-title animate__animated animate__fadeIn">About Our Farm</h2>
+            <div class="row align-items-center">
+                <div class="col-lg-6 mb-4 mb-lg-0 animate__animated animate__fadeInLeft">
+                    <div class="pe-lg-5">
+                        <h3 class="mb-4">Sustainable Fish Farming in The Gambia</h3>
+                        <p class="lead">We've been raising healthy, sustainable fish for over 10 years using eco-friendly practices that prioritize animal welfare and environmental conservation.</p>
+                        <p>Our 5-acre farm features state-of-the-art pond systems with optimal water quality monitoring, ensuring the best conditions for fish growth. We use natural feeding methods supplemented with scientifically formulated feeds to produce the healthiest fish.</p>
+                        <p>As a family-owned business, we take pride in delivering the freshest products while supporting our local community through employment and sustainable practices.</p>
+                        <div class="mt-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-check-circle text-primary me-3"></i>
+                                <span>100% natural growth process</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-check-circle text-primary me-3"></i>
+                                <span>No harmful chemicals or antibiotics</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle text-primary me-3"></i>
+                                <span>Certified sustainable practices</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 animate__animated animate__fadeInRight">
+                    <div class="position-relative">
+                        <img src="images/header_fishes_image.jpg" alt="Our Fish Farm" class="img-fluid rounded shadow-lg">
+                        <div class="position-absolute bottom-0 start-0 bg-primary text-white p-3 m-3 rounded">
+                            <h4 class="mb-0">10+ Years Experience</h4>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6">
-                <img src="farm-photo.jpg" alt="Our Fish Farm" class="img-fluid rounded">
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center section-title">What Our Customers Say</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="testimonial-card">
+                        <p>"The quality of Bah & Brothers fish is unmatched in The Gambia. I've been a regular customer for 3 years and their consistency is impressive."</p>
+                        <div class="testimonial-author">
+                            <i class="fas fa-user me-2"></i> Alieu Jallow, Restaurant Owner
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="testimonial-card">
+                        <p>"As a chef, I appreciate the freshness and texture of their fish. It's clear they prioritize quality at every step of their process."</p>
+                        <div class="testimonial-author">
+                            <i class="fas fa-user me-2"></i> Fatou Njie, Head Chef
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="testimonial-card">
+                        <p>"Their delivery is always on time and the fish arrives in perfect condition. The best supplier I've worked with in my 10 years in the business."</p>
+                        <div class="testimonial-author">
+                            <i class="fas fa-user me-2"></i> Modou Sarr, Hotel Manager
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Products Section -->
-    <section id="products" class="container mb-5 py-5 bg-light">
-        <h2 class="text-center mb-5">Our Fish Products</h2>
-        <div class="row g-4">
-            <?php foreach ($fishTypes as $fish):
-                $available = 0;
-                foreach ($inventory as $item) {
-                    if ($item['fish_type_id'] == $fish['id']) {
-                        $available = $item['quantity_kg'];
-                        break;
+    <section class="py-5" id="products">
+        <div class="container">
+            <h2 class="text-center section-title">Our Fish Products</h2>
+            <p class="text-center mb-5 lead">Premium quality fish raised with care and delivered fresh</p>
+            <div class="row g-4">
+                <?php foreach ($fishTypes as $fish):
+                    $available = 0;
+                    foreach ($inventory as $item) {
+                        if ($item['fish_type_id'] == $fish['id']) {
+                            $available = $item['quantity_kg'];
+                            break;
+                        }
                     }
-                }
-            ?>
-                <div class="col-md-4">
-                    <div class="card fish-card">
-                        <div class="card-body text-center">
-                            <div class="mb-3" style="font-size: 3rem; color: #0d6efd;">
-                                <i class="fas fa-fish"></i>
-                            </div>
-                            <h3><?= htmlspecialchars($fish['name']) ?></h3>
-                            <p><?= htmlspecialchars($fish['description']) ?></p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="badge bg-<?= $available > 0 ? 'success' : 'danger' ?>">
-                                    <?= $available > 0 ? 'Available' : 'Out of Stock' ?>
-                                </span>
-                                <span class="fw-bold">D<?= number_format($fish['price_per_kg'], 2) ?>/kg</span>
+                ?>
+                    <div class="col-md-4">
+                        <div class="card fish-card">
+                            <div class="card-body text-center p-4">
+                                <div class="fish-icon">
+                                    <i class="fas fa-fish"></i>
+                                </div>
+                                <h3 class="mb-3"><?= htmlspecialchars($fish['name']) ?></h3>
+                                <p class="text-muted mb-4"><?= htmlspecialchars($fish['description']) ?></p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-<?= $available > 0 ? 'success' : 'danger' ?> px-3 py-2">
+                                        <?= $available > 0 ? 'Available' : 'Out of Stock' ?>
+                                    </span>
+                                    <span class="fw-bold fs-5">D<?= number_format($fish['price_per_kg'], 2) ?>/kg</span>
+                                </div>
+                                <?php if ($available > 0): ?>
+                                    <a href="login.php" class="btn btn-primary mt-4 w-100">Order Now</a>
+                                <?php else: ?>
+                                    <button class="btn btn-secondary mt-4 w-100" disabled>Notify When Available</button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-5 bg-primary text-white">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h2 class="display-4 fw-bold">5+</h2>
+                    <p class="mb-0">Acres of Ponds</p>
                 </div>
-            <?php endforeach; ?>
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h2 class="display-4 fw-bold">10+</h2>
+                    <p class="mb-0">Years Experience</p>
+                </div>
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h2 class="display-4 fw-bold">50+</h2>
+                    <p class="mb-0">Happy Clients</p>
+                </div>
+                <div class="col-md-3">
+                    <h2 class="display-4 fw-bold">24h</h2>
+                    <p class="mb-0">Delivery Time</p>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- Location Section -->
-    <section class="container mb-5">
-        <h2 class="text-center mb-4">Our Location</h2>
-        <div class="row">
-            <div class="col-md-6 mb-4 mb-md-0">
-                <div id="map">
-                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d426.3555215998874!2d-16.581948620765203!3d13.275459520868738!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xec2a1274709760f%3A0x8b68002e434944b8!2sKuloro!5e1!3m2!1sen!2sgm!4v1742995136730!5m2!1sen!2sgm" width="500" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <section class="py-5" id="location">
+        <div class="container">
+            <h2 class="text-center section-title">Our Location</h2>
+            <div class="row">
+                <div class="col-md-6 mb-4 mb-md-0">
+                    <div id="map">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d426.3555215998874!2d-16.581948620765203!3d13.275459520868738!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xec2a1274709760f%3A0x8b68002e434944b8!2sKuloro!5e1!3m2!1sen!2sgm!4v1742995136730!5m2!1sen!2sgm" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <h4><i class="fas fa-map-marker-alt text-primary me-2"></i> Farm Address</h4>
-                <p class="mb-4">Kuloro Kombo East Village<br>Brikama, Gambia</p>
+                <div class="col-md-6">
+                    <div class="ps-md-4">
+                        <h3 class="mb-4">Visit Our Farm</h3>
+                        <div class="mb-4">
+                            <h4><i class="fas fa-map-marker-alt text-primary me-2"></i> Farm Address</h4>
+                            <p class="mb-4 fs-5">Kuloro Kombo East Village<br>Brikama, Gambia</p>
+                        </div>
 
-                <h4><i class="fas fa-clock text-primary me-2"></i> Visiting Hours</h4>
-                <p class="mb-4">Monday - Friday: 8:00 AM - 5:00 PM<br>Saturday: 9:00 AM - 2:00 PM</p>
+                        <div class="mb-4">
+                            <h4><i class="fas fa-clock text-primary me-2"></i> Visiting Hours</h4>
+                            <p class="mb-4 fs-5">Monday - Friday: 8:00 AM - 5:00 PM<br>Saturday: 9:00 AM - 2:00 PM</p>
+                        </div>
 
-                <h4><i class="fas fa-phone-alt text-primary me-2"></i> Contact Info</h4>
-                <p class="mb-1"><i class="fas fa-phone me-2"></i> +220 311481</p>
-                <p><i class="fas fa-envelope me-2"></i>abliebah@gmail.com</p>
+                        <div class="mb-4">
+                            <h4><i class="fas fa-phone-alt text-primary me-2"></i> Contact Info</h4>
+                            <p class="mb-1 fs-5"><i class="fas fa-phone me-2"></i> +220 311481</p>
+                            <p class="fs-5"><i class="fas fa-envelope me-2"></i> abliebah@gmail.com</p>
+                        </div>
+
+                        <div class="mt-5">
+                            <h4>Follow Us</h4>
+                            <div class="d-flex">
+                                <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                                <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                                <a href="#" class="social-icon"><i class="fab fa-whatsapp"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Contact Form -->
-    <section id="contact" class="container mb-5">
-        <h2 class="text-center mb-4">Contact Us</h2>
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="contact-form">
-                    <form id="contactForm">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="name" class="form-label">Your Name</label>
-                                <input type="text" class="form-control" id="name" required>
+    <section class="py-5 bg-light" id="contact">
+        <div class="container">
+            <h2 class="text-center section-title">Contact Us</h2>
+            <p class="text-center mb-5 lead">Have questions? Get in touch with our team</p>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="contact-form">
+                        <form id="contactForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class="form-label">Your Name</label>
+                                    <input type="text" class="form-control" id="name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control" id="email" required>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone">
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="subject" class="form-label">Subject</label>
-                            <input type="text" class="form-control" id="subject" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="message" class="form-label">Message</label>
-                            <textarea class="form-control" id="message" rows="5" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
+                            <div class="mb-3">
+                                <label for="subject" class="form-label">Subject</label>
+                                <select class="form-select" id="subject" required>
+                                    <option value="" selected disabled>Select a subject</option>
+                                    <option value="order">Order Inquiry</option>
+                                    <option value="visit">Farm Visit</option>
+                                    <option value="wholesale">Wholesale Purchase</option>
+                                    <option value="other">Other Question</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="message" class="form-label">Message</label>
+                                <textarea class="form-control" id="message" rows="5" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">Send Message</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white py-4">
+    <footer class="bg-dark text-white py-5">
         <div class="container">
             <div class="row">
-                <div class="col-md-4 mb-4 mb-md-0">
-                    <h5>Bah & Brothers Fish farm</h5>
-                    <p>Providing fresh, healthy fish to our community since 2025.</p>
-                </div>
-                <div class="col-md-4 mb-4 mb-md-0">
-                    <h5>Quick Links</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="#products" class="text-white">Our Products</a></li>
-                        <li><a href="#contact" class="text-white">Contact Us</a></li>
-                        <li><a href="login.php" class="text-white">Customer Login</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-4">
-                    <h5>Connect With Us</h5>
-                    <div class="social-links">
-                        <a href="#" class="text-white me-2"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="text-white me-2"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="text-white me-2"><i class="fab fa-instagram"></i></a>
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <h4 class="mb-4"><i class="fas fa-fish me-2"></i> Bah & Brothers</h4>
+                    <p>Providing fresh, healthy fish to our community since 2025 through sustainable farming practices and commitment to quality.</p>
+                    <div class="mt-4">
+                        <a href="#" class="text-white me-3"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-instagram"></i></a>
                         <a href="#" class="text-white"><i class="fab fa-whatsapp"></i></a>
                     </div>
                 </div>
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h5 class="mb-4">Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#home" class="text-white">Home</a></li>
+                        <li class="mb-2"><a href="#about" class="text-white">About Us</a></li>
+                        <li class="mb-2"><a href="#products" class="text-white">Products</a></li>
+                        <li class="mb-2"><a href="#location" class="text-white">Location</a></li>
+                        <li><a href="#contact" class="text-white">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h5 class="mb-4">Products</h5>
+                    <ul class="list-unstyled">
+                        <?php foreach ($fishTypes as $fish): ?>
+                            <li class="mb-2"><a href="#products" class="text-white"><?= htmlspecialchars($fish['name']) ?></a></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="mb-4">Contact Info</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-3"><i class="fas fa-map-marker-alt me-2"></i> Kuloro Kombo East Village, Brikama</li>
+                        <li class="mb-3"><i class="fas fa-phone me-2"></i> +220 311481</li>
+                        <li class="mb-3"><i class="fas fa-envelope me-2"></i> abliebah@gmail.com</li>
+                        <li><i class="fas fa-clock me-2"></i> Mon-Fri: 8AM-5PM, Sat: 9AM-2PM</li>
+                    </ul>
+                </div>
             </div>
             <hr class="my-4">
-            <div class="text-center">
-                <p class="mb-0">&copy; <?= date('Y') ?> Green Valley Fish Farm. All rights reserved.</p>
+            <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <p class="mb-0">&copy; <?= date('Y') ?> Bah & Brothers Fish Farm. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-white me-3">Privacy Policy</a>
+                    <a href="#" class="text-white">Terms of Service</a>
+                </div>
             </div>
         </div>
     </footer>
 
+    <!-- Floating Action Button -->
+    <a href="https://wa.me/220311481" class="floating-action-btn animate__animated animate__bounceIn">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- Back to Top Button -->
+    <a href="#" class="back-to-top">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
     <script>
         // Simple form handling
         document.getElementById('contactForm').addEventListener('submit', function(e) {
@@ -220,6 +636,42 @@ $inventory = $stmt->fetchAll();
             alert('Thank you for your message! We will contact you soon.');
             this.reset();
         });
+
+        // Back to top button
+        const backToTopButton = document.querySelector('.back-to-top');
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('active');
+            } else {
+                backToTopButton.classList.remove('active');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Animation on scroll
+        function animateOnScroll() {
+            const elements = document.querySelectorAll('.animate__animated');
+            elements.forEach(element => {
+                const elementPosition = element.getBoundingClientRect().top;
+                const screenPosition = window.innerHeight / 1.3;
+
+                if (elementPosition < screenPosition) {
+                    element.classList.add('animate__fadeInUp');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', animateOnScroll);
+        animateOnScroll(); // Run once on page load
     </script>
 </body>
 

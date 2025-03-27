@@ -1,5 +1,10 @@
 <?php
 require_once 'auth.php';
+if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
+    <li class="nav-item">
+        <a class="nav-link" href="admin_contacts.php">Contact Messages</a>
+    </li>
+<?php endif;
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">

@@ -1,20 +1,20 @@
 <?php
-
 require_once 'navbar.php';
 require_once 'auth.php';
 require_once 'functions.php';
+
 if (!isAdmin()) {
     header("Location: index.php");
     exit();
 }
 
-// Get current costs
+// Get current detailed costs
 $currentCosts = [];
 $stmt = $pdo->query("
-SELECT pc.*, ft.name
-FROM production_costs pc
-JOIN fish_types ft ON pc.fish_type_id = ft.id
-WHERE pc.date_recorded = (SELECT MAX(date_recorded) FROM production_costs)
+    SELECT dc.*, ft.name 
+    FROM detailed_costs dc
+    JOIN fish_types ft ON dc.fish_type_id = ft.id
+    WHERE dc.date_recorded = (SELECT MAX(date_recorded) FROM detailed_costs)
 ");
 $currentCosts = $stmt->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_UNIQUE);
 
@@ -23,24 +23,41 @@ $fishTypes = getAllFishTypes();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $date = $_POST['date'];
-    $costs = $_POST['costs'];
+    $costData = $_POST['costs'];
 
     try {
         $pdo->beginTransaction();
 
-        foreach ($costs as $fishTypeId => $cost) {
-            $cost = floatval($cost);
-            if ($cost > 0) {
+        foreach ($costData as $fishTypeId => $components) {
+            // Calculate total cost per kg
+            $totalCost = array_sum($components);
+
+            if ($totalCost > 0) {
                 $stmt = $pdo->prepare("
-INSERT INTO production_costs (fish_type_id, cost_per_kg, date_recorded)
-VALUES (?, ?, ?)
-");
-                $stmt->execute([$fishTypeId, $cost, $date]);
+                    INSERT INTO detailed_costs (
+                        fish_type_id, date_recorded,
+                        feed_cost, labor_cost, transport_cost, 
+                        medication_cost, equipment_cost, aeration_cost,
+                        other_cost, total_cost
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $fishTypeId,
+                    $date,
+                    $components['feed'] ?? 0,
+                    $components['labor'] ?? 0,
+                    $components['transport'] ?? 0,
+                    $components['medication'] ?? 0,
+                    $components['equipment'] ?? 0,
+                    $components['aeration'] ?? 0,
+                    $components['other'] ?? 0,
+                    $totalCost
+                ]);
             }
         }
 
         $pdo->commit();
-        $_SESSION['message'] = "Production costs updated successfully!";
+        $_SESSION['message'] = "Detailed production costs updated successfully!";
         header("Location: cost_management.php");
         exit();
     } catch (Exception $e) {
@@ -55,14 +72,29 @@ VALUES (?, ?, ?)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cost Management - Fish Inventory</title>
+    <title>Detailed Cost Management - Fish Inventory</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .cost-component {
+            margin-bottom: 15px;
+        }
+
+        .cost-component label {
+            font-weight: 500;
+        }
+
+        .total-cost {
+            font-weight: bold;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 
 <body>
-
     <div class="container mt-4">
-        <h2>Production Cost Management</h2>
+        <h2>Detailed Production Cost Management</h2>
 
         <?php if (isset($error)): ?>
             <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
@@ -75,7 +107,7 @@ VALUES (?, ?, ?)
 
         <div class="card mb-4">
             <div class="card-header">
-                <h5>Update Production Costs</h5>
+                <h5>Update Detailed Production Costs</h5>
             </div>
             <div class="card-body">
                 <form method="POST">
@@ -85,37 +117,80 @@ VALUES (?, ?, ?)
                             value="<?= date('Y-m-d') ?>" required>
                     </div>
 
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Fish Type</th>
-                                <th>Current Cost/kg</th>
-                                <th>New Cost/kg</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($fishTypes as $fish): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($fish['name']) ?></td>
-                                    <td>
-                                        <?= isset($currentCosts[$fish['id']]) ?
-                                            'D' . number_format($currentCosts[$fish['id']]['cost_per_kg'], 2) :
-                                            'Not set' ?>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" min="0"
-                                            class="form-control"
-                                            name="costs[<?= $fish['id'] ?>]"
-                                            value="<?= isset($currentCosts[$fish['id']]) ?
-                                                        $currentCosts[$fish['id']]['cost_per_kg'] : '' ?>"
-                                            required>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <?php foreach ($fishTypes as $fish): ?>
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5><?= htmlspecialchars($fish['name']) ?></h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Feed Cost -->
+                                <div class="cost-component">
+                                    <label class="form-label">Feed Cost </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][feed]"
+                                        value="<?= $currentCosts[$fish['id']]['feed_cost'] ?? 0 ?>" required>
+                                </div>
 
-                    <button type="submit" class="btn btn-primary">Update Costs</button>
+                                <!-- Labor Cost -->
+                                <div class="cost-component">
+                                    <label class="form-label">Labor Cost </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][labor]"
+                                        value="<?= $currentCosts[$fish['id']]['labor_cost'] ?? 0 ?>" required>
+                                </div>
+
+                                <!-- Transport Cost -->
+                                <div class="cost-component">
+                                    <label class="form-label">Transport Cost </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][transport]"
+                                        value="<?= $currentCosts[$fish['id']]['transport_cost'] ?? 0 ?>" required>
+                                </div>
+
+                                <!-- Medication Cost -->
+                                <div class="cost-component">
+                                    <label class="form-label">Medication Cost </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][medication]"
+                                        value="<?= $currentCosts[$fish['id']]['medication_cost'] ?? 0 ?>" required>
+                                </div>
+
+                                <!-- Equipment Cost -->
+                                <div class="cost-component">
+                                    <label class="form-label">Equipment Cost </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][equipment]"
+                                        value="<?= $currentCosts[$fish['id']]['equipment_cost'] ?? 0 ?>" required>
+                                </div>
+
+                                <!-- Aeration Cost -->
+                                <div class="cost-component">
+                                    <label class="form-label">Aeration Cost </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][aeration]"
+                                        value="<?= $currentCosts[$fish['id']]['aeration_cost'] ?? 0 ?>" required>
+                                </div>
+
+                                <!-- Other Costs -->
+                                <div class="cost-component">
+                                    <label class="form-label">Other Costs </label>
+                                    <input type="number" step="0.01" min="0" class="form-control"
+                                        name="costs[<?= $fish['id'] ?>][other]"
+                                        value="<?= $currentCosts[$fish['id']]['other_cost'] ?? 0 ?>" required>
+                                </div>
+
+                                <!-- Total Cost Preview -->
+                                <div class="total-cost mt-3">
+                                    <span>Estimated Total Cost/kg: </span>
+                                    <span id="total_<?= $fish['id'] ?>">
+                                        D<?= number_format($currentCosts[$fish['id']]['total_cost'] ?? 0, 2) ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                    <button type="submit" class="btn btn-primary">Update All Costs</button>
                 </form>
             </div>
         </div>
@@ -125,53 +200,72 @@ VALUES (?, ?, ?)
                 <h5>Cost History</h5>
             </div>
             <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <?php foreach ($fishTypes as $fish): ?>
-                                <th><?= htmlspecialchars($fish['name']) ?> Cost/kg</th>
-                            <?php endforeach; ?>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $stmt = $pdo->query("
-                            SELECT DISTINCT date_recorded 
-                            FROM production_costs 
-                            ORDER BY date_recorded DESC
-                            LIMIT 10
-                        ");
-                        $dates = $stmt->fetchAll();
-
-                        foreach ($dates as $dateRow):
-                            $date = $dateRow['date_recorded'];
-                            $stmt = $pdo->prepare("
-                                SELECT fish_type_id, cost_per_kg 
-                                FROM production_costs 
-                                WHERE date_recorded = ?
-                            ");
-                            $stmt->execute([$date]);
-                            $costs = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-                        ?>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
                             <tr>
-                                <td><?= htmlspecialchars($date) ?></td>
-                                <?php foreach ($fishTypes as $fish): ?>
-                                    <td>
-                                        <?= isset($costs[$fish['id']]) ?
-                                            'D' . number_format($costs[$fish['id']], 2) :
-                                            '-' ?>
-                                    </td>
-                                <?php endforeach; ?>
+                                <th>Date</th>
+                                <th>Fish Type</th>
+                                <th>Feed</th>
+                                <th>Labor</th>
+                                <th>Transport</th>
+                                <th>Medication</th>
+                                <th>Equipment</th>
+                                <th>Aeration</th>
+                                <th>Other</th>
+                                <th>Total</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $stmt = $pdo->query("
+                                SELECT dc.*, ft.name as fish_name
+                                FROM detailed_costs dc
+                                JOIN fish_types ft ON dc.fish_type_id = ft.id
+                                ORDER BY date_recorded DESC, fish_type_id
+                                LIMIT 20
+                            ");
+                            $history = $stmt->fetchAll();
+
+                            foreach ($history as $record):
+                            ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($record['date_recorded']) ?></td>
+                                    <td><?= htmlspecialchars($record['fish_name']) ?></td>
+                                    <td>D<?= number_format($record['feed_cost'], 2) ?></td>
+                                    <td>D<?= number_format($record['labor_cost'], 2) ?></td>
+                                    <td>D<?= number_format($record['transport_cost'], 2) ?></td>
+                                    <td>D<?= number_format($record['medication_cost'], 2) ?></td>
+                                    <td>D<?= number_format($record['equipment_cost'], 2) ?></td>
+                                    <td>D<?= number_format($record['aeration_cost'], 2) ?></td>
+                                    <td>D<?= number_format($record['other_cost'], 2) ?></td>
+                                    <td class="fw-bold">D<?= number_format($record['total_cost'], 2) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Calculate and update totals when input values change
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const fishId = this.name.match(/\[(\d+)\]/)[1];
+                const inputs = document.querySelectorAll(`input[name^="costs[${fishId}]"]`);
+                let total = 0;
+
+                inputs.forEach(input => {
+                    total += parseFloat(input.value) || 0;
+                });
+
+                document.getElementById(`total_${fishId}`).textContent = 'D' + total.toFixed(2);
+            });
+        });
+    </script>
 </body>
 
 </html>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 26, 2025 at 02:03 PM
+-- Generation Time: Mar 26, 2025 at 07:47 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,68 @@ SET time_zone = "+00:00";
 --
 -- Database: `fish_inventory`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `contact_messages`
+--
+
+CREATE TABLE `contact_messages` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `subject` varchar(200) NOT NULL,
+  `message` text NOT NULL,
+  `status` enum('new','read','responded') DEFAULT 'new',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `admin_notes` text DEFAULT NULL,
+  `responded_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `contact_submissions`
+--
+
+CREATE TABLE `contact_submissions` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `subject` varchar(50) NOT NULL,
+  `message` text NOT NULL,
+  `submitted_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `detailed_costs`
+--
+
+CREATE TABLE `detailed_costs` (
+  `id` int(11) NOT NULL,
+  `fish_type_id` int(11) NOT NULL,
+  `date_recorded` date NOT NULL,
+  `feed_cost` decimal(10,2) NOT NULL COMMENT 'Cost of feed per kg',
+  `labor_cost` decimal(10,2) NOT NULL COMMENT 'Labor cost per kg',
+  `transport_cost` decimal(10,2) NOT NULL COMMENT 'Transportation cost per kg',
+  `medication_cost` decimal(10,2) NOT NULL COMMENT 'Medication cost per kg',
+  `equipment_cost` decimal(10,2) NOT NULL COMMENT 'Equipment maintenance per kg',
+  `aeration_cost` decimal(10,2) NOT NULL COMMENT 'Aeration/oxygen costs per kg',
+  `other_cost` decimal(10,2) NOT NULL COMMENT 'Other miscellaneous costs per kg',
+  `total_cost` decimal(10,2) NOT NULL COMMENT 'Sum of all cost components'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `detailed_costs`
+--
+
+INSERT INTO `detailed_costs` (`id`, `fish_type_id`, `date_recorded`, `feed_cost`, `labor_cost`, `transport_cost`, `medication_cost`, `equipment_cost`, `aeration_cost`, `other_cost`, `total_cost`) VALUES
+(1, 1, '2025-03-26', 100.00, 200.00, 300.00, 100.00, 100.00, 200.00, 200.00, 1200.00),
+(2, 2, '2025-03-26', 100.00, 200.00, 200.00, 200.00, 400.00, 300.00, 100.00, 1500.00);
 
 -- --------------------------------------------------------
 
@@ -61,8 +123,8 @@ CREATE TABLE `inventory` (
 --
 
 INSERT INTO `inventory` (`id`, `fish_type_id`, `quantity_kg`, `last_updated`) VALUES
-(1, 1, 99.00, '2025-03-26 11:43:18'),
-(2, 2, 150.00, '2025-03-26 11:13:59');
+(1, 1, 97.00, '2025-03-26 16:33:53'),
+(2, 2, 148.00, '2025-03-26 16:34:07');
 
 -- --------------------------------------------------------
 
@@ -83,7 +145,9 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`id`, `user_id`, `order_date`, `status`, `total_amount`) VALUES
-(1, 2, '2025-03-26 11:43:18', 'completed', 500.00);
+(1, 2, '2025-03-26 11:43:18', 'completed', 500.00),
+(2, 2, '2025-03-26 16:33:53', 'processing', 200.00),
+(3, 2, '2025-03-26 16:34:07', 'cancelled', 400.00);
 
 -- --------------------------------------------------------
 
@@ -104,7 +168,9 @@ CREATE TABLE `order_items` (
 --
 
 INSERT INTO `order_items` (`id`, `order_id`, `fish_type_id`, `quantity_kg`, `unit_price`) VALUES
-(1, 1, 1, 1.00, 500.00);
+(1, 1, 1, 1.00, 500.00),
+(2, 2, 1, 2.00, 100.00),
+(3, 3, 2, 2.00, 200.00);
 
 -- --------------------------------------------------------
 
@@ -165,7 +231,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `email`, `role`, `created_at`) VALUES
-(1, 'admin', '$2b$12$6AK4Efc8uTcnOnJOM2ueHeanljd6oke9VgT7WHRD8tFrWUGGTnMVC', 'admin@fishfarm.com', 'admin', '2025-03-26 11:13:59'),
+(1, 'admin@abliebah', '$2b$12$6AK4Efc8uTcnOnJOM2ueHeanljd6oke9VgT7WHRD8tFrWUGGTnMVC', 'admin@fishfarm.com', 'admin', '2025-03-26 11:13:59'),
 (2, 'abliebah', '$2y$10$riEbnkvMN/CKqWY9kCasQOGYlWtp955c8F.U6x2QQHzyc8pX3Wnv6', 'abdouliebah@mrc.gm', 'customer', '2025-03-26 11:42:21');
 
 -- --------------------------------------------------------
@@ -180,6 +246,25 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `contact_messages`
+--
+ALTER TABLE `contact_messages`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `contact_submissions`
+--
+ALTER TABLE `contact_submissions`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `detailed_costs`
+--
+ALTER TABLE `detailed_costs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fish_type_id` (`fish_type_id`);
 
 --
 -- Indexes for table `fish_types`
@@ -230,6 +315,24 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `contact_messages`
+--
+ALTER TABLE `contact_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `contact_submissions`
+--
+ALTER TABLE `contact_submissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `detailed_costs`
+--
+ALTER TABLE `detailed_costs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `fish_types`
 --
 ALTER TABLE `fish_types`
@@ -245,13 +348,13 @@ ALTER TABLE `inventory`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `production_costs`
@@ -268,6 +371,12 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `detailed_costs`
+--
+ALTER TABLE `detailed_costs`
+  ADD CONSTRAINT `detailed_costs_ibfk_1` FOREIGN KEY (`fish_type_id`) REFERENCES `fish_types` (`id`);
 
 --
 -- Constraints for table `inventory`
