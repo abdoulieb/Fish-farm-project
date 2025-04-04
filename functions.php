@@ -51,6 +51,9 @@ function placeOrder($userId, $items)
         $total = 0;
         foreach ($items as $item) {
             $fish = getFishTypeById($item['fish_type_id']);
+            if (!$fish) {
+                throw new Exception("Fish type not found.");
+            }
             $total += $fish['price_per_kg'] * $item['quantity'];
         }
 
@@ -82,10 +85,10 @@ function getOrders($userId = null)
 {
     global $pdo;
     if ($userId) {
-        $stmt = $pdo->prepare("SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE user_id = ? ORDER BY order_date DESC");
+        $stmt = $pdo->prepare("SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.user_id = ? ORDER BY o.order_date DESC");
         $stmt->execute([$userId]);
     } else {
-        $stmt = $pdo->query("SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id ORDER BY order_date DESC");
+        $stmt = $pdo->query("SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.order_date DESC");
     }
     return $stmt->fetchAll();
 }
@@ -93,7 +96,7 @@ function getOrders($userId = null)
 function getOrderItems($orderId)
 {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT oi.*, f.name FROM order_items oi JOIN fish_types f ON oi.fish_type_id = f.id WHERE order_id = ?");
+    $stmt = $pdo->prepare("SELECT oi.*, f.name FROM order_items oi JOIN fish_types f ON oi.fish_type_id = f.id WHERE oi.order_id = ?");
     $stmt->execute([$orderId]);
     return $stmt->fetchAll();
 }

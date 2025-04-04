@@ -25,6 +25,39 @@ function loginUser($username, $password)
     return false;
 }
 
+
+// Add these functions to auth.php
+function checkEmployeePermission($permission)
+{
+    if (!isLoggedIn() || $_SESSION['role'] !== 'employee') return false;
+
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT $permission FROM employee_permissions WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $result = $stmt->fetch();
+
+        return $result ? (bool)$result[$permission] : false;
+    } catch (PDOException $e) {
+        error_log("Permission check failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+function canEmployeeSell()
+{
+    return checkEmployeePermission('can_sell');
+}
+
+function canEmployeeRecordFatality()
+{
+    return checkEmployeePermission('can_record_fatality');
+}
+
+function canEmployeeProcessOrders()
+{
+    return checkEmployeePermission('can_process_orders');
+}
 function isLoggedIn()
 {
     return isset($_SESSION['user_id']);
@@ -40,4 +73,8 @@ function logout()
     session_destroy();
     header("Location: login.php");
     exit();
+}
+function isEmployee()
+{
+    return isLoggedIn() && $_SESSION['role'] === 'employee';
 }

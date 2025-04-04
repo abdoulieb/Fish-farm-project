@@ -1,11 +1,7 @@
 <?php
 require_once 'auth.php';
-if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
-    <li class="nav-item">
-        <a class="nav-link" href="admin_contacts.php">Contact Messages</a>
-    </li>
-<?php endif;
 ?>
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
         <a class="navbar-brand" href="index.php">Fish Farm</a>
@@ -32,6 +28,29 @@ if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
                     <li class="nav-item">
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'profit_analysis.php' ? 'active' : '' ?>" href="profit_analysis.php">Profit Analysis</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'employee_sales.php' ? 'active' : '' ?>" href="employee_sales.php">Employee Sales</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'fatality_records.php' ? 'active' : '' ?>" href="fatality_records.php">Record Fatality</a>
+                    </li>
+                <?php endif; ?>
+                <?php if (isEmployee()): ?>
+                    <?php if (canEmployeeSell() || isAdmin()): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'employee_sales.php' ? 'active' : '' ?>" href="employee_sales.php">Sales</a>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (canEmployeeProcessOrders() || isAdmin()): ?>
+                        <li class="nav-item"></li>
+                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'process_orders.php' ? 'active' : '' ?>" href="process_orders.php">Process Orders</a>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (canEmployeeRecordFatality() || isAdmin()): ?>
+                        <li class="nav-item"></li>
+                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'fatality_records.php' ? 'active' : '' ?>" href="fatality_records.php">Record Fatality</a>
+                        </li>
+                    <?php endif; ?>
                 <?php endif; ?>
             </ul>
             <ul class="navbar-nav">
