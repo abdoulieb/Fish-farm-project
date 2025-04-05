@@ -104,6 +104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="text" class="form-control" id="fishName" value="<?= htmlspecialchars($fish['name']) ?>" readonly>
                     </div>
                     <div class="mb-3">
+                        <label for="priceType" class="form-label">Price Type</label>
+                        <select class="form-select" id="priceType" name="priceType" required>
+                            <option value="retail" selected>Retail</option>
+                            <option value="wholesale">Wholesale</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label for="price" class="form-label">Price per kg</label>
                         <input type="text" class="form-control" id="price" value="D<?= number_format($fish['price_per_kg'], 2) ?>" readonly>
                     </div>
@@ -121,6 +128,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const priceTypeSelect = document.getElementById('priceType');
+            const priceInput = document.getElementById('price');
+
+            const retailPrice = <?= $fish['price_per_kg'] ?>;
+            const wholesalePrice = <?= $fish['wholesale_price_per_kg'] ?? $fish['price_per_kg'] ?>;
+
+            priceTypeSelect.addEventListener('change', function() {
+                if (priceTypeSelect.value === 'wholesale') {
+                    priceInput.value = `D${wholesalePrice.toFixed(2)}`;
+                } else {
+                    priceInput.value = `D${retailPrice.toFixed(2)}`;
+                }
+            });
+        });
+    </script>
+    <!-- Modal -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="checkoutModalLabel">Confirm Your Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Fish Type:</strong> <span id="modalFishName"></span></p>
+                    <p><strong>Price per kg:</strong> <span id="modalPrice"></span></p>
+                    <p><strong>Quantity (kg):</strong> <span id="modalQuantity"></span></p>
+                    <p><strong>Total Price:</strong> <span id="modalTotalPrice"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmOrderButton">Confirm Order</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const quantityInput = document.getElementById('quantity');
+            const modalFishName = document.getElementById('modalFishName');
+            const modalPrice = document.getElementById('modalPrice');
+            const modalQuantity = document.getElementById('modalQuantity');
+            const modalTotalPrice = document.getElementById('modalTotalPrice');
+            const confirmOrderButton = document.getElementById('confirmOrderButton');
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const fishName = document.getElementById('fishName').value;
+                const pricePerKg = parseFloat(document.getElementById('price').value.replace('D', ''));
+                const quantity = parseFloat(quantityInput.value);
+                const totalPrice = (pricePerKg * quantity).toFixed(2);
+
+                modalFishName.textContent = fishName;
+                modalPrice.textContent = `D${pricePerKg.toFixed(2)}`;
+                modalQuantity.textContent = `${quantity.toFixed(2)} kg`;
+                modalTotalPrice.textContent = `D${totalPrice}`;
+
+                const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+                checkoutModal.show();
+            });
+
+            confirmOrderButton.addEventListener('click', function() {
+                form.submit();
+            });
+        });
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

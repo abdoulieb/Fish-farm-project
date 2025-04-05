@@ -1,9 +1,9 @@
-summary report sale per day
+summary report sale per day by employee
 under employee tab removed 
 we have price/kg (D)
 to remove the 100 and 200 on fish variable.
 
-on the sale tab add a location to update the kg.
+on the sale tab add a location to update the kg per location for employee so each employee  available kg can be set for them by admin.
 
 under material cost section 
 add office furnishing 
@@ -12,7 +12,14 @@ smoker_oven
 ice cube machine.
 packaging material.
 
-the fatality tab
+the fatality file 
 
-to be substraction from the fingerling clumns.
+to be substraction from the fingerling total.
 and to have report  of fatality and balance dead and live 
+
+
+new update 
+
+cancel an order the kg should revert to the total stock 
+sales kg should be subtracting from the main inventory total stock kg
+
