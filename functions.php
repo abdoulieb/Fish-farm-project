@@ -107,3 +107,65 @@ function updateOrderStatus($orderId, $status)
     $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
     return $stmt->execute([$status, $orderId]);
 }
+function cancelOrder($orderId)
+{
+    global $pdo;
+    $stmt = $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?");
+    return $stmt->execute([$orderId]);
+}
+
+function deleteOrder($orderId) {
+    global $pdo;
+
+    try {
+        $pdo->beginTransaction();
+
+        // Check if the order status is 'pending'
+        $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ?");
+        $stmt->execute([$orderId]);
+        $order = $stmt->fetch();
+
+        if (!$order || $order['status'] !== 'pending') {
+            throw new Exception("Only pending orders can be deleted.");
+        }
+
+        // Retrieve order items to update inventory
+        $stmt = $pdo->prepare("SELECT fish_type_id, quantity_kg FROM order_items WHERE order_id = ?");
+        $stmt->execute([$orderId]);
+        $orderItems = $stmt->fetchAll();
+
+        // Roll back inventory quantities
+        foreach ($orderItems as $item) {
+            $stmt = $pdo->prepare("UPDATE inventory SET quantity_kg = quantity_kg + ? WHERE fish_type_id = ?");
+            $stmt->execute([$item['quantity_kg'], $item['fish_type_id']]);
+        }
+
+        // Delete order items
+        $stmt = $pdo->prepare("DELETE FROM order_items WHERE order_id = ?");
+        $stmt->execute([$orderId]);
+
+        // Delete the order
+        $stmt = $pdo->prepare("DELETE FROM orders WHERE id = ?");
+        $stmt->execute([$orderId]);
+
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return false;
+    }
+}
+function updateOrderItem($orderId, $newQuantity, $newTotal, $userId) {
+    global $pdo;
+    
+    // Verify the order belongs to the user
+    $stmt = $pdo->prepare("SELECT id FROM orders WHERE id = ? AND user_id = ?");
+    $stmt->execute([$orderId, $userId]);
+    if (!$stmt->fetch()) {
+        return false;
+    }
+    
+    // Update the order item
+    $stmt = $pdo->prepare("UPDATE order_items SET quantity_kg = ?, total_price = ? WHERE order_id = ?");
+    return $stmt->execute([$newQuantity, $newTotal, $orderId]);
+}   

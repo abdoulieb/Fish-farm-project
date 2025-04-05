@@ -1,9 +1,19 @@
+
 <?php
 require_once 'auth.php';
 require_once 'functions.php';
 
 if (!isLoggedIn()) {
     header("Location: login.php");
+    exit();
+}
+
+// Handle order deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_order_id'])) {
+    $orderId = intval($_POST['delete_order_id']);
+    deleteOrder($orderId); // Replace with the function to delete the order
+    $_SESSION['message'] = "Order #$orderId has been deleted.";
+    header("Location: orders.php");
     exit();
 }
 
@@ -78,6 +88,7 @@ unset($_SESSION['message']);
                             <th>Items</th>
                             <th>Total Amount</th>
                             <th>Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -99,6 +110,16 @@ unset($_SESSION['message']);
                                 <?= $order['status'] === 'completed' ? 'bg-success' : ($order['status'] === 'processing' ? 'bg-primary' : ($order['status'] === 'cancelled' ? 'bg-danger' : 'bg-secondary')) ?>">
                                         <?= ucfirst($order['status']) ?>
                                     </span>
+                                </td>
+                                <td>
+                                    <?php if ($order['status'] === 'pending'): ?>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="delete_order_id" value="<?= $order['id'] ?>">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span class="text-muted">No actions available</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
