@@ -1,0 +1,18 @@
+summary report sale per day
+under employee tab removed 
+we have price/kg (D)
+to remove the 100 and 200 on fish variable.
+
+on the sale tab add a location to update the kg.
+
+under material cost section 
+add office furnishing 
+glove  
+smoker_oven 
+ice cube machine.
+packaging material.
+
+the fatality tab
+
+to be substraction from the fingerling clumns.
+and to have report  of fatality and balance dead and live 

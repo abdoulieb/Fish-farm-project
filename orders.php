@@ -25,6 +25,9 @@ unset($_SESSION['message']);
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="#">Fish Farm</a>
+            <?php if (isEmployee()): ?>
+                <a class="navbar-brand" href="employee_sales.php">Make a Sale</a>
+            <?php endif; ?>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -39,6 +42,11 @@ unset($_SESSION['message']);
                     <?php if (isAdmin()): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="admin.php">Admin</a>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (isAdmin()): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="manage_employees.php">Manage Employees</a>
                         </li>
                     <?php endif; ?>
                 </ul>

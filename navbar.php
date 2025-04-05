@@ -1,5 +1,19 @@
 <?php
 require_once 'auth.php';
+require_once 'functions.php';
+
+// Get available inventory for employee's location
+$employeeInventory = [];
+if (isEmployee()) {
+    $stmt = $pdo->prepare("
+        SELECT ft.name, li.quantity 
+        FROM location_inventory li
+        JOIN fish_types ft ON li.fish_type_id = ft.id
+        WHERE li.employee_id = ?
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $employeeInventory = $stmt->fetchAll();
+}
 ?>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -11,13 +25,22 @@ require_once 'auth.php';
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                    <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : '' ?>" href="index.php">Home</a>
+                    <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : '' ?>" href="index.php">
+                        Home
+                        <?php if (isEmployee() && !empty($employeeInventory)): ?>
+                            <span class="badge bg-light text-dark ms-1" title="Available Inventory">
+                                <?= array_sum(array_column($employeeInventory, 'quantity')) ?> kg
+                            </span>
+                        <?php endif; ?>
+                    </a>
                 </li>
+
                 <?php if (isLoggedIn()): ?>
                     <li class="nav-item">
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'orders.php' ? 'active' : '' ?>" href="orders.php">My Orders</a>
                     </li>
                 <?php endif; ?>
+
                 <?php if (isAdmin()): ?>
                     <li class="nav-item">
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'admin.php' ? 'active' : '' ?>" href="admin.php">Admin</a>
@@ -28,31 +51,34 @@ require_once 'auth.php';
                     <li class="nav-item">
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'profit_analysis.php' ? 'active' : '' ?>" href="profit_analysis.php">Profit Analysis</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'employee_sales.php' ? 'active' : '' ?>" href="employee_sales.php">Employee Sales</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'fatality_records.php' ? 'active' : '' ?>" href="fatality_records.php">Record Fatality</a>
-                    </li>
                 <?php endif; ?>
+
                 <?php if (isEmployee()): ?>
-                    <?php if (canEmployeeSell() || isAdmin()): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'employee_sales.php' ? 'active' : '' ?>" href="employee_sales.php">Sales</a>
-                        </li>
-                    <?php endif; ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'employee_sales.php' ? 'active' : '' ?>" href="employee_sales.php">
+                            Sales
+                            <?php if (!empty($employeeInventory)): ?>
+                                <span class="badge bg-light text-dark ms-1" title="Available for Sale">
+                                    <?= array_sum(array_column($employeeInventory, 'quantity')) ?> kg
+                                </span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+
                     <?php if (canEmployeeProcessOrders() || isAdmin()): ?>
-                        <li class="nav-item"></li>
-                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'process_orders.php' ? 'active' : '' ?>" href="process_orders.php">Process Orders</a>
+                        <li class="nav-item">
+                            <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'process_orders.php' ? 'active' : '' ?>" href="process_orders.php">Process Orders</a>
                         </li>
                     <?php endif; ?>
+
                     <?php if (canEmployeeRecordFatality() || isAdmin()): ?>
-                        <li class="nav-item"></li>
-                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'fatality_records.php' ? 'active' : '' ?>" href="fatality_records.php">Record Fatality</a>
+                        <li class="nav-item">
+                            <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'fatality_records.php' ? 'active' : '' ?>" href="fatality_records.php">Record Fatality</a>
                         </li>
                     <?php endif; ?>
                 <?php endif; ?>
             </ul>
+
             <ul class="navbar-nav">
                 <?php if (isLoggedIn()): ?>
                     <li class="nav-item">
@@ -70,3 +96,16 @@ require_once 'auth.php';
         </div>
     </div>
 </nav>
+
+<?php if (isEmployee() && !empty($employeeInventory) && basename($_SERVER['PHP_SELF']) === 'index.php'): ?>
+    <div class="container mt-3">
+        <div class="alert alert-info">
+            <h5>Your Available Inventory</h5>
+            <ul class="mb-0">
+                <?php foreach ($employeeInventory as $item): ?>
+                    <li><?= htmlspecialchars($item['name']) ?>: <?= number_format($item['quantity'], 2) ?> kg</li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+<?php endif; ?>

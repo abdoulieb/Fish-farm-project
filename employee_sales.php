@@ -9,10 +9,27 @@ if (!canEmployeeSell() && !isAdmin()) {
     exit();
 }
 
-// Rest of your existing code...
+// Get employee's assigned inventory
+$assignedInventory = $pdo->prepare("
+    SELECT ft.id, ft.name, ft.price_per_kg, li.quantity as available_kg 
+    FROM location_inventory li
+    JOIN fish_types ft ON li.fish_type_id = ft.id
+    WHERE li.employee_id = ?
+");
+$assignedInventory->execute([$_SESSION['user_id']]);
+$fishTypes = $assignedInventory->fetchAll();
 
-$fishTypes = getAllFishTypes();
-$inventory = getInventory();
+// Get all sales made by this employee
+$employeeSales = $pdo->prepare("
+    SELECT s.*, COUNT(si.id) as item_count, SUM(si.quantity_kg) as total_kg
+    FROM sales s
+    LEFT JOIN sale_items si ON s.id = si.sale_id
+    WHERE s.employee_id = ?
+    GROUP BY s.id
+    ORDER BY s.sale_date DESC
+");
+$employeeSales->execute([$_SESSION['user_id']]);
+$sales = $employeeSales->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerName = $_POST['customer_name'] ?? 'Walk-in Customer';
@@ -22,9 +39,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $items = [];
     $totalAmount = 0;
 
+    // Validate quantities against assigned inventory
     foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
         $quantity = floatval($_POST['quantity'][$index]);
         if ($quantity > 0) {
+            // Check if employee has enough assigned inventory
+            $stmt = $pdo->prepare("
+                SELECT quantity FROM location_inventory 
+                WHERE employee_id = ? AND fish_type_id = ?
+            ");
+            $stmt->execute([$_SESSION['user_id'], $fishTypeId]);
+            $assigned = $stmt->fetch();
+
+            if (!$assigned || $assigned['quantity'] < $quantity) {
+                $_SESSION['error'] = "You don't have enough assigned inventory for this sale";
+                header("Location: employee_sales.php");
+                exit();
+            }
+
             $fish = getFishTypeById($fishTypeId);
             $items[] = [
                 'fish_type_id' => $fishTypeId,
@@ -40,17 +72,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
 
             // Create sale record
-            $stmt = $pdo->prepare("INSERT INTO sales (employee_id, customer_name, customer_phone, total_amount, payment_method) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("
+                INSERT INTO sales (employee_id, customer_name, customer_phone, total_amount, payment_method) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
             $stmt->execute([$_SESSION['user_id'], $customerName, $customerPhone, $totalAmount, $paymentMethod]);
             $saleId = $pdo->lastInsertId();
 
-            // Add sale items and update inventory
+            // Add sale items and update inventories
             foreach ($items as $item) {
-                $stmt = $pdo->prepare("INSERT INTO sale_items (sale_id, fish_type_id, quantity_kg, unit_price) VALUES (?, ?, ?, ?)");
+                // Add sale item
+                $stmt = $pdo->prepare("
+                    INSERT INTO sale_items (sale_id, fish_type_id, quantity_kg, unit_price) 
+                    VALUES (?, ?, ?, ?)
+                ");
                 $stmt->execute([$saleId, $item['fish_type_id'], $item['quantity'], $item['unit_price']]);
 
-                $stmt = $pdo->prepare("UPDATE inventory SET quantity_kg = quantity_kg - ? WHERE fish_type_id = ?");
+                // Update main inventory
+                $stmt = $pdo->prepare("
+                    UPDATE inventory SET quantity_kg = quantity_kg - ? 
+                    WHERE fish_type_id = ?
+                ");
                 $stmt->execute([$item['quantity'], $item['fish_type_id']]);
+
+                // Update employee's assigned inventory
+                $stmt = $pdo->prepare("
+                    UPDATE location_inventory SET quantity = quantity - ? 
+                    WHERE employee_id = ? AND fish_type_id = ?
+                ");
+                $stmt->execute([$item['quantity'], $_SESSION['user_id'], $item['fish_type_id']]);
             }
 
             $pdo->commit();
@@ -92,93 +142,147 @@ include 'navbar.php';
             background-color: #f8f9fa;
             border-radius: 5px;
         }
+
+        .sales-table {
+            margin-top: 30px;
+        }
+
+        .tab-content {
+            padding: 20px 0;
+        }
     </style>
 </head>
 
 <body>
     <div class="container mt-4">
-        <h2>Record New Sale</h2>
+        <h2>Employee Sales Dashboard</h2>
 
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs" id="employeeTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="new-sale-tab" data-bs-toggle="tab" data-bs-target="#new-sale" type="button" role="tab">New Sale</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button" role="tab">My Sales</button>
+            </li>
+        </ul>
 
-        <?php if (isset($_SESSION['message'])): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
-            <?php unset($_SESSION['message']); ?>
-        <?php endif; ?>
+        <!-- Tab Content -->
+        <div class="tab-content" id="employeeTabsContent">
+            <!-- New Sale Tab -->
+            <div class="tab-pane fade show active" id="new-sale" role="tabpanel">
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
+                    <?php unset($_SESSION['error']); ?>
+                <?php endif; ?>
 
-        <form method="POST" id="salesForm">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label for="customer_name" class="form-label">Customer Name</label>
-                    <input type="text" class="form-control" id="customer_name" name="customer_name" placeholder="Walk-in Customer">
-                </div>
-                <div class="col-md-6">
-                    <label for="customer_phone" class="form-label">Customer Phone</label>
-                    <input type="text" class="form-control" id="customer_phone" name="customer_phone">
-                </div>
-            </div>
+                <?php if (isset($_SESSION['message'])): ?>
+                    <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
+                    <?php unset($_SESSION['message']); ?>
+                <?php endif; ?>
 
-            <div class="mb-3">
-                <label for="payment_method" class="form-label">Payment Method</label>
-                <select class="form-select" id="payment_method" name="payment_method">
-                    <option value="cash">Cash</option>
-                    <option value="credit">Credit</option>
-                    <option value="mobile_money">Mobile Money</option>
-                </select>
-            </div>
+                <form method="POST" id="salesForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="customer_name" class="form-label">Customer Name</label>
+                            <input type="text" class="form-control" id="customer_name" name="customer_name" placeholder="Walk-in Customer">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="customer_phone" class="form-label">Customer Phone</label>
+                            <input type="text" class="form-control" id="customer_phone" name="customer_phone">
+                        </div>
+                    </div>
 
-            <h4 class="mt-4">Sale Items</h4>
-            <div id="itemsContainer">
-                <div class="fish-item row">
-                    <div class="col-md-4">
-                        <label class="form-label">Fish Type</label>
-                        <select class="form-select fish-type" name="fish_type_id[]" required>
-                            <option value="">Select Fish</option>
-                            <?php foreach ($fishTypes as $fish):
-                                $available = 0;
-                                foreach ($inventory as $item) {
-                                    if ($item['fish_type_id'] == $fish['id']) {
-                                        $available = $item['quantity_kg'];
-                                        break;
-                                    }
-                                }
-                                if ($available > 0): ?>
-                                    <option value="<?= $fish['id'] ?>" data-price="<?= $fish['price_per_kg'] ?>" data-available="<?= $available ?>">
-                                        <?= htmlspecialchars($fish['name']) ?> (D<?= number_format($fish['price_per_kg'], 2) ?>/kg)
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">Payment Method</label>
+                        <select class="form-select" id="payment_method" name="payment_method">
+                            <option value="cash">Cash</option>
+                            <option value="credit">Credit</option>
+                            <option value="mobile_money">Mobile Money</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Quantity (kg)</label>
-                        <input type="number" step="0.1" min="0.1" class="form-control quantity" name="quantity[]" required>
-                        <small class="text-muted available-text">Available: 0 kg</small>
+
+                    <h4 class="mt-4">Sale Items</h4>
+                    <div id="itemsContainer">
+                        <div class="fish-item row">
+                            <div class="col-md-4">
+                                <label class="form-label">Fish Type</label>
+                                <select class="form-select fish-type" name="fish_type_id[]" required>
+                                    <option value="">Select Fish</option>
+                                    <?php foreach ($fishTypes as $fish): ?>
+                                        <option value="<?= $fish['id'] ?>"
+                                            data-price="<?= $fish['price_per_kg'] ?>"
+                                            data-available="<?= $fish['available_kg'] ?>">
+                                            <?= htmlspecialchars($fish['name']) ?> (D<?= number_format($fish['price_per_kg'], 2) ?>/kg)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Quantity (kg)</label>
+                                <input type="number" step="0.1" min="0.1" class="form-control quantity" name="quantity[]" required>
+                                <small class="text-muted available-text">Available: 0 kg</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Price (D)</label>
+                                <input type="number" step="0.01" class="form-control price" readonly>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Price (D)</label>
-                        <input type="number" step="0.01" class="form-control price" readonly>
+
+                    <button type="button" id="addItem" class="btn btn-secondary mt-2">Add Another Fish</button>
+
+                    <div class="total-display mt-4">
+                        Total: D<span id="totalAmount">0.00</span>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Complete Sale</button>
+                        <a href="employee_sales.php" class="btn btn-outline-secondary">Cancel</a>
                     </div>
-                </div>
+                </form>
             </div>
 
-            <button type="button" id="addItem" class="btn btn-secondary mt-2">Add Another Fish</button>
-
-            <div class="total-display mt-4">
-                Total: D<span id="totalAmount">0.00</span>
+            <!-- Sales History Tab -->
+            <div class="tab-pane fade" id="sales" role="tabpanel">
+                <h4>My Sales History</h4>
+                <?php if (empty($sales)): ?>
+                    <div class="alert alert-info">You haven't made any sales yet.</div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-striped sales-table">
+                            <thead>
+                                <tr>
+                                    <th>Sale ID</th>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Total Kg</th>
+                                    <th>Amount</th>
+                                    <th>Payment Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($sales as $sale): ?>
+                                    <tr>
+                                        <td>#<?= $sale['id'] ?></td>
+                                        <td><?= date('M d, Y H:i', strtotime($sale['sale_date'])) ?></td>
+                                        <td><?= htmlspecialchars($sale['customer_name']) ?></td>
+                                        <td><?= $sale['item_count'] ?></td>
+                                        <td><?= number_format($sale['total_kg'], 2) ?></td>
+                                        <td>D<?= number_format($sale['total_amount'], 2) ?></td>
+                                        <td><?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
-
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Complete Sale</button>
-                <a href="employee_sales.php" class="btn btn-outline-secondary">Cancel</a>
-            </div>
-        </form>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -241,6 +345,16 @@ include 'navbar.php';
             }
 
             updateRemoveButtons();
+
+            // Tab functionality
+            const triggerTabList = [].slice.call(document.querySelectorAll('#employeeTabs button'));
+            triggerTabList.forEach(function(triggerEl) {
+                const tabTrigger = new bootstrap.Tab(triggerEl);
+                triggerEl.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    tabTrigger.show();
+                });
+            });
         });
     </script>
 </body>
