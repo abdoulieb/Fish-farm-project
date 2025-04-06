@@ -114,19 +114,25 @@ function cancelOrder($orderId)
     return $stmt->execute([$orderId]);
 }
 
-function deleteOrder($orderId) {
+function cancelOrderByUser($orderId, $userId = null)
+{
     global $pdo;
 
     try {
         $pdo->beginTransaction();
 
-        // Check if the order status is 'pending'
-        $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ?");
+        // Verify the order exists and is not already cancelled
+        $stmt = $pdo->prepare("SELECT user_id, status FROM orders WHERE id = ?");
         $stmt->execute([$orderId]);
         $order = $stmt->fetch();
 
-        if (!$order || $order['status'] !== 'pending') {
-            throw new Exception("Only pending orders can be deleted.");
+        if (!$order || $order['status'] === 'cancelled') {
+            throw new Exception("Order not found or already cancelled.");
+        }
+
+        // If userId is provided, verify the order belongs to the user (for customer cancellations)
+        if ($userId !== null && $order['user_id'] != $userId && !isAdmin() && !canEmployeeProcessOrders()) {
+            throw new Exception("You don't have permission to cancel this order.");
         }
 
         // Retrieve order items to update inventory
@@ -140,12 +146,8 @@ function deleteOrder($orderId) {
             $stmt->execute([$item['quantity_kg'], $item['fish_type_id']]);
         }
 
-        // Delete order items
-        $stmt = $pdo->prepare("DELETE FROM order_items WHERE order_id = ?");
-        $stmt->execute([$orderId]);
-
-        // Delete the order
-        $stmt = $pdo->prepare("DELETE FROM orders WHERE id = ?");
+        // Set the order total amount to zero and mark as cancelled
+        $stmt = $pdo->prepare("UPDATE orders SET total_amount = 0, status = 'cancelled' WHERE id = ?");
         $stmt->execute([$orderId]);
 
         $pdo->commit();
@@ -155,17 +157,3 @@ function deleteOrder($orderId) {
         return false;
     }
 }
-function updateOrderItem($orderId, $newQuantity, $newTotal, $userId) {
-    global $pdo;
-    
-    // Verify the order belongs to the user
-    $stmt = $pdo->prepare("SELECT id FROM orders WHERE id = ? AND user_id = ?");
-    $stmt->execute([$orderId, $userId]);
-    if (!$stmt->fetch()) {
-        return false;
-    }
-    
-    // Update the order item
-    $stmt = $pdo->prepare("UPDATE order_items SET quantity_kg = ?, total_price = ? WHERE order_id = ?");
-    return $stmt->execute([$newQuantity, $newTotal, $orderId]);
-}   

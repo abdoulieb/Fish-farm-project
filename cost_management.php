@@ -268,7 +268,7 @@ $costHistory = $stmt->fetchAll();
         }
 
         .cost-section-header {
-            background-color:rgba(248, 249, 250, 0.31);
+            background-color: rgba(248, 249, 250, 0.31);
             padding: 10px 15px;
             cursor: pointer;
             border-bottom: 1px solid #ddd;
@@ -291,7 +291,7 @@ $costHistory = $stmt->fetchAll();
         .form-group {
             margin-bottom: 15px;
         }
-        
+
         .modal-lg {
             max-width: 90%;
         }
@@ -592,7 +592,7 @@ $costHistory = $stmt->fetchAll();
                                         <input type="number" class="form-control" id="smoker_ovon_total_cost" name="smoker_ovon_total_cost" step="0.01" min="0">
                                     </div>
                                 </div>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -764,7 +764,6 @@ $costHistory = $stmt->fetchAll();
                                 <th>Transport</th>
                                 <th>Services</th>
                                 <th>Total</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -778,452 +777,10 @@ $costHistory = $stmt->fetchAll();
                                     <td>D<?= number_format($record['total_transport_cost'], 2) ?></td>
                                     <td>D<?= number_format($record['total_services_cost'], 2) ?></td>
                                     <td class="fw-bold">D<?= number_format($record['running_cost'], 2) ?></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal<?= $record['id'] ?>">Edit</button>
-                                        <a href="delete_cost.php?id=<?= $record['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">Delete</a>
-                                    </td>
+
                                 </tr>
 
-                                <!-- Edit Modal -->
-                                <div class="modal fade" id="editModal<?= $record['id'] ?>" tabindex="-1" aria-labelledby="editModalLabel<?= $record['id'] ?>" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="editModalLabel<?= $record['id'] ?>">Edit Cost Record - <?= htmlspecialchars($record['fish_name']) ?> (<?= htmlspecialchars($record['date_recorded']) ?>)</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <form method="POST">
-                                            <div class="modal-body">
-                                                <input type="hidden" name="id" value="<?= $record['id'] ?>">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="fish_type_id_<?= $record['id'] ?>">Fish Type</label>
-                                                            <select class="form-control" id="fish_type_id_<?= $record['id'] ?>" name="fish_type_id" required>
-                                                                <?php foreach ($fishTypes as $fish): ?>
-                                                                    <option value="<?= $fish['id'] ?>" <?= $fish['id'] == $record['fish_type_id'] ? 'selected' : '' ?>>
-                                                                        <?= htmlspecialchars($fish['name']) ?>
-                                                                    </option>
-                                                                <?php endforeach; ?>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="date_<?= $record['id'] ?>">Date</label>
-                                                            <input type="date" class="form-control" id="date_<?= $record['id'] ?>" name="date" value="<?= htmlspecialchars($record['date_recorded']) ?>" required>
-                                                        </div>
-                                                    </div>
-                                                </div>
 
-                                                <!-- Fingerlings Cost Section -->
-                                                <div class="cost-section">
-                                                    <div class="cost-section-header" onclick="toggleSection(this)">
-                                                        <h5>Fingerlings Cost</h5>
-                                                    </div>
-                                                    <div class="cost-section-content">
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fingerlings_quantity_<?= $record['id'] ?>">Quantity</label>
-                                                                    <input type="number" class="form-control" id="fingerlings_quantity_<?= $record['id'] ?>" name="fingerlings_quantity" step="1" min="0" value="<?= htmlspecialchars($record['fingerlings_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fingerlings_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="fingerlings_unit_price_<?= $record['id'] ?>" name="fingerlings_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['fingerlings_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fingerlings_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="fingerlings_total_cost_<?= $record['id'] ?>" name="fingerlings_total_cost" step="0.01" min="0"  value="<?= htmlspecialchars($record['fingerlings_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Feed Cost Section -->
-                                                <div class="cost-section">
-                                                    <div class="cost-section-header" onclick="toggleSection(this)">
-                                                        <h5>Feed Cost</h5>
-                                                    </div>
-                                                    <div class="cost-section-content">
-                                                        <h6>Starter Feed</h6>
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="starter_feed_quantity_<?= $record['id'] ?>">Quantity (kg)</label>
-                                                                    <input type="number" class="form-control" id="starter_feed_quantity_<?= $record['id'] ?>" name="starter_feed_quantity" step="0.1" min="0" value="<?= htmlspecialchars($record['starter_feed_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="starter_feed_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="starter_feed_unit_price_<?= $record['id'] ?>" name="starter_feed_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['starter_feed_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="starter_feed_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="starter_feed_total_cost_<?= $record['id'] ?>" name="starter_feed_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['starter_feed_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <h6>Grower Feed</h6>
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="grower_feed_quantity_<?= $record['id'] ?>">Quantity (kg)</label>
-                                                                    <input type="number" class="form-control" id="grower_feed_quantity_<?= $record['id'] ?>" name="grower_feed_quantity" step="0.1" min="0" value="<?= htmlspecialchars($record['grower_feed_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="grower_feed_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="grower_feed_unit_price_<?= $record['id'] ?>" name="grower_feed_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['grower_feed_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="grower_feed_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="grower_feed_total_cost_<?= $record['id'] ?>" name="grower_feed_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['grower_feed_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Material Cost Section -->
-                                                <div class="cost-section">
-                                                    <div class="cost-section-header" onclick="toggleSection(this)">
-                                                        <h5>Material Cost</h5>
-                                                    </div>
-                                                    <div class="cost-section-content">
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="basin_quantity_<?= $record['id'] ?>">Basin 25m3 (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="basin_quantity_<?= $record['id'] ?>" name="basin_quantity" step="1" min="0" value="<?= htmlspecialchars($record['basin_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="basin_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="basin_unit_price_<?= $record['id'] ?>" name="basin_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['basin_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="basin_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="basin_total_cost_<?= $record['id'] ?>" name="basin_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['basin_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Fish Nets -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fish_nets_quantity_<?= $record['id'] ?>">Fish Nets (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="fish_nets_quantity_<?= $record['id'] ?>" name="fish_nets_quantity" step="1" min="0" value="<?= htmlspecialchars($record['fish_nets_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fish_nets_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="fish_nets_unit_price_<?= $record['id'] ?>" name="fish_nets_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['fish_nets_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fish_nets_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="fish_nets_total_cost_<?= $record['id'] ?>" name="fish_nets_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['fish_nets_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Water Quality Meter -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="water_quality_meter_quantity_<?= $record['id'] ?>">Water Quality Meter (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="water_quality_meter_quantity_<?= $record['id'] ?>" name="water_quality_meter_quantity" step="1" min="0" value="<?= htmlspecialchars($record['water_quality_meter_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="water_quality_meter_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="water_quality_meter_unit_price_<?= $record['id'] ?>" name="water_quality_meter_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['water_quality_meter_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="water_quality_meter_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="water_quality_meter_total_cost_<?= $record['id'] ?>" name="water_quality_meter_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['water_quality_meter_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Pond Pumps -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_pumps_quantity_<?= $record['id'] ?>">Pond Pumps (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="pond_pumps_quantity_<?= $record['id'] ?>" name="pond_pumps_quantity" step="1" min="0" value="<?= htmlspecialchars($record['pond_pumps_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_pumps_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="pond_pumps_unit_price_<?= $record['id'] ?>" name="pond_pumps_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['pond_pumps_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_pumps_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="pond_pumps_total_cost_<?= $record['id'] ?>" name="pond_pumps_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['pond_pumps_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Pond Aeration -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_aeration_quantity_<?= $record['id'] ?>">Pond Aeration (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="pond_aeration_quantity_<?= $record['id'] ?>" name="pond_aeration_quantity" step="1" min="0" value="<?= htmlspecialchars($record['pond_aeration_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_aeration_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="pond_aeration_unit_price_<?= $record['id'] ?>" name="pond_aeration_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['pond_aeration_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_aeration_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="pond_aeration_total_cost_<?= $record['id'] ?>" name="pond_aeration_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['pond_aeration_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Pond Vacuum -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_vacuum_quantity_<?= $record['id'] ?>">Pond Vacuum (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="pond_vacuum_quantity_<?= $record['id'] ?>" name="pond_vacuum_quantity" step="1" min="0" value="<?= htmlspecialchars($record['pond_vacuum_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_vacuum_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="pond_vacuum_unit_price_<?= $record['id'] ?>" name="pond_vacuum_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['pond_vacuum_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="pond_vacuum_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="pond_vacuum_total_cost_<?= $record['id'] ?>" name="pond_vacuum_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['pond_vacuum_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Fencing -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fencing_quantity_<?= $record['id'] ?>">Fencing (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="fencing_quantity_<?= $record['id'] ?>" name="fencing_quantity" step="1" min="0" value="<?= htmlspecialchars($record['fencing_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fencing_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="fencing_unit_price_<?= $record['id'] ?>" name="fencing_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['fencing_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="fencing_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="fencing_total_cost_<?= $record['id'] ?>" name="fencing_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['fencing_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Smoker Ovon -->
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="smoker_ovon_unit_price_<?= $record['id'] ?>">Smoker Ovon Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="smoker_ovon_unit_price_<?= $record['id'] ?>" name="smoker_ovon_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['smoker_ovon_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="smoker_ovon_total_cost_<?= $record['id'] ?>">Smoker Ovon Total Cost (D)</label>
-                                                                    <input type="number" class="form-control" id="smoker_ovon_total_cost_<?= $record['id'] ?>" name="smoker_ovon_total_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['smoker_ovon_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Transportation Cost Section -->
-                                                <div class="cost-section">
-                                                    <div class="cost-section-header" onclick="toggleSection(this)">
-                                                        <h5>Transportation Cost</h5>
-                                                    </div>
-                                                    <div class="cost-section-content">
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="transport_senegal_quantity_<?= $record['id'] ?>">Transport Senegal (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="transport_senegal_quantity_<?= $record['id'] ?>" name="transport_senegal_quantity" step="1" min="0" value="<?= htmlspecialchars($record['transport_senegal_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="transport_senegal_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="transport_senegal_unit_price_<?= $record['id'] ?>" name="transport_senegal_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['transport_senegal_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="transport_senegal_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="transport_senegal_total_cost_<?= $record['id'] ?>" name="transport_senegal_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['transport_senegal_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="transport_gambia_quantity_<?= $record['id'] ?>">Transport Gambia (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="transport_gambia_quantity_<?= $record['id'] ?>" name="transport_gambia_quantity" step="1" min="0" value="<?= htmlspecialchars($record['transport_gambia_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="transport_gambia_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="transport_gambia_unit_price_<?= $record['id'] ?>" name="transport_gambia_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['transport_gambia_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="transport_gambia_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="transport_gambia_total_cost_<?= $record['id'] ?>" name="transport_gambia_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['transport_gambia_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Services/Indirect Cost Section -->
-                                                <div class="cost-section">
-                                                    <div class="cost-section-header" onclick="toggleSection(this)">
-                                                        <h5>Services/Indirect Cost</h5>
-                                                    </div>
-                                                    <div class="cost-section-content">
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="water_quantity_<?= $record['id'] ?>">Water (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="water_quantity_<?= $record['id'] ?>" name="water_quantity" step="1" min="0" value="<?= htmlspecialchars($record['water_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="water_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="water_unit_price_<?= $record['id'] ?>" name="water_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['water_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="water_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="water_total_cost_<?= $record['id'] ?>" name="water_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['water_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="row">
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="electricity_quantity_<?= $record['id'] ?>">Electricity (Quantity)</label>
-                                                                    <input type="number" class="form-control" id="electricity_quantity_<?= $record['id'] ?>" name="electricity_quantity" step="1" min="0" value="<?= htmlspecialchars($record['electricity_quantity'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="electricity_unit_price_<?= $record['id'] ?>">Unit Price (D)</label>
-                                                                    <input type="number" class="form-control" id="electricity_unit_price_<?= $record['id'] ?>" name="electricity_unit_price" step="0.01" min="0" value="<?= htmlspecialchars($record['electricity_unit_price'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <div class="form-group">
-                                                                    <label for="electricity_total_cost_<?= $record['id'] ?>">Amount (D)</label>
-                                                                    <input type="number" class="form-control" id="electricity_total_cost_<?= $record['id'] ?>" name="electricity_total_cost" step="0.01" min="0" readonly value="<?= htmlspecialchars($record['electricity_total_cost'] ?? '') ?>">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Other services costs -->
-                                                        <div class="form-group">
-                                                            <label for="maintenance_cost_<?= $record['id'] ?>">Maintenance Cost (D)</label>
-                                                            <input type="number" class="form-control" id="maintenance_cost_<?= $record['id'] ?>" name="maintenance_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['maintenance_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="rent_cost_<?= $record['id'] ?>">Rent Cost (D)</label>
-                                                            <input type="number" class="form-control" id="rent_cost_<?= $record['id'] ?>" name="rent_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['rent_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="refrigeration_cost_<?= $record['id'] ?>">Refrigeration Cost (D)</label>
-                                                            <input type="number" class="form-control" id="refrigeration_cost_<?= $record['id'] ?>" name="refrigeration_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['refrigeration_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="marketing_cost_<?= $record['id'] ?>">Marketing Cost (D)</label>
-                                                            <input type="number" class="form-control" id="marketing_cost_<?= $record['id'] ?>" name="marketing_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['marketing_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="medication_cost_<?= $record['id'] ?>">Medication Cost (D)</label>
-                                                            <input type="number" class="form-control" id="medication_cost_<?= $record['id'] ?>" name="medication_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['medication_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="hosting_cost_<?= $record['id'] ?>">Hosting Cost (D)</label>
-                                                            <input type="number" class="form-control" id="hosting_cost_<?= $record['id'] ?>" name="hosting_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['hosting_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="electrical_installation_cost_<?= $record['id'] ?>">Electrical Installation Cost (D)</label>
-                                                            <input type="number" class="form-control" id="electrical_installation_cost_<?= $record['id'] ?>" name="electrical_installation_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['electrical_installation_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="business_registration_cost_<?= $record['id'] ?>">Business Registration Cost (D)</label>
-                                                            <input type="number" class="form-control" id="business_registration_cost_<?= $record['id'] ?>" name="business_registration_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['business_registration_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="insurance_cost_<?= $record['id'] ?>">Insurance Cost (D)</label>
-                                                            <input type="number" class="form-control" id="insurance_cost_<?= $record['id'] ?>" name="insurance_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['insurance_cost'] ?? '') ?>">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label for="tax_cost_<?= $record['id'] ?>">Tax Cost (D)</label>
-                                                            <input type="number" class="form-control" id="tax_cost_<?= $record['id'] ?>" name="tax_cost" step="0.01" min="0" value="<?= htmlspecialchars($record['tax_cost'] ?? '') ?>">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                                            </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -1262,7 +819,7 @@ $costHistory = $stmt->fetchAll();
             document.querySelectorAll('.cost-section').forEach(section => {
                 section.classList.remove('active');
             });
-            
+
             // Calculate totals for existing values in edit modals
             document.querySelectorAll('[id$="_quantity"], [id$="_unit_price"]').forEach(input => {
                 if (input.value) {
@@ -1273,4 +830,5 @@ $costHistory = $stmt->fetchAll();
         });
     </script>
 </body>
+
 </html>

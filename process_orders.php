@@ -2,23 +2,33 @@
 require_once 'auth.php';
 require_once 'functions.php';
 
-// Check if user is employee with process orders permission
+// Check if user is employee with process orders permission or admin
 if (!canEmployeeProcessOrders() && !isAdmin()) {
     $_SESSION['error'] = "You don't have permission to process orders";
     header("Location: index.php");
     exit();
 }
 
-// Rest of your existing code...
-
-// Get pending orders
-$orders = $pdo->query("
-    SELECT o.*, u.username 
-    FROM orders o
-    JOIN users u ON o.user_id = u.id
-    WHERE o.status = 'pending'
-    ORDER BY o.order_date
-")->fetchAll();
+// Get pending orders (show all pending orders for admin, only assigned ones for employees)
+if (isAdmin()) {
+    $orders = $pdo->query("
+        SELECT o.*, u.username 
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        WHERE o.status = 'pending'
+        ORDER BY o.order_date
+    ")->fetchAll();
+} else {
+    // For employees, you might want to show only orders assigned to them
+    // Or all pending orders if they can process any
+    $orders = $pdo->query("
+        SELECT o.*, u.username 
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        WHERE o.status = 'pending'
+        ORDER BY o.order_date
+    ")->fetchAll();
+}
 
 // Process order status change
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
@@ -28,13 +38,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
     $validStatuses = ['processing', 'completed', 'cancelled'];
     if (in_array($action, $validStatuses)) {
         try {
-            $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-            $stmt->execute([$action, $orderId]);
+            // For cancellations, we need to revert inventory
+            if ($action === 'cancelled') {
+                // Get order items first
+                $items = getOrderItems($orderId);
 
-            $_SESSION['message'] = "Order #$orderId status updated to " . ucfirst($action);
+                $pdo->beginTransaction();
+
+                // Revert inventory for each item
+                foreach ($items as $item) {
+                    $stmt = $pdo->prepare("UPDATE inventory SET quantity_kg = quantity_kg + ? WHERE fish_type_id = ?");
+                    $stmt->execute([$item['quantity_kg'], $item['fish_type_id']]);
+                }
+
+                // Update order status
+                $stmt = $pdo->prepare("UPDATE orders SET status = 'cancelled', total_amount = 0 WHERE id = ?");
+                $stmt->execute([$orderId]);
+
+                $pdo->commit();
+
+                $_SESSION['message'] = "Order #$orderId has been cancelled and inventory reverted";
+            } else {
+                // For other status changes (processing, completed)
+                $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
+                $stmt->execute([$action, $orderId]);
+
+                $_SESSION['message'] = "Order #$orderId status updated to " . ucfirst($action);
+            }
+
             header("Location: process_orders.php");
             exit();
         } catch (PDOException $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $_SESSION['error'] = "Error updating order: " . $e->getMessage();
         }
     }
@@ -42,7 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
 
 include 'navbar.php';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -79,6 +115,7 @@ include 'navbar.php';
                             <th>Customer</th>
                             <th>Total</th>
                             <th>Items</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -102,12 +139,22 @@ include 'navbar.php';
                                     </ul>
                                 </td>
                                 <td>
+                                    <span class="badge 
+                                        <?= $order['status'] === 'completed' ? 'bg-success' : ($order['status'] === 'processing' ? 'bg-primary' : ($order['status'] === 'cancelled' ? 'bg-danger' : 'bg-warning')) ?>">
+                                        <?= ucfirst($order['status']) ?>
+                                    </span>
+                                </td>
+                                <td>
                                     <form method="POST" class="d-inline">
                                         <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                        <button type="submit" name="action" value="processing"
-                                            class="btn btn-sm btn-primary">Process</button>
-                                        <button type="submit" name="action" value="completed"
-                                            class="btn btn-sm btn-success">Complete</button>
+                                        <?php if ($order['status'] === 'pending'): ?>
+                                            <button type="submit" name="action" value="processing"
+                                                class="btn btn-sm btn-primary">Process</button>
+                                        <?php endif; ?>
+                                        <?php if ($order['status'] === 'processing'): ?>
+                                            <button type="submit" name="action" value="completed"
+                                                class="btn btn-sm btn-success">Complete</button>
+                                        <?php endif; ?>
                                         <button type="submit" name="action" value="cancelled"
                                             class="btn btn-sm btn-danger">Cancel</button>
                                     </form>

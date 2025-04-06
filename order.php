@@ -103,13 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="fishName" class="form-label">Fish Type</label>
                         <input type="text" class="form-control" id="fishName" value="<?= htmlspecialchars($fish['name']) ?>" readonly>
                     </div>
-                    <div class="mb-3">
-                        <label for="priceType" class="form-label">Price Type</label>
-                        <select class="form-select" id="priceType" name="priceType" required>
-                            <option value="retail" selected>Retail</option>
-                            <option value="wholesale">Wholesale</option>
-                        </select>
-                    </div>
+
                     <div class="mb-3">
                         <label for="price" class="form-label">Price per kg</label>
                         <input type="text" class="form-control" id="price" value="D<?= number_format($fish['price_per_kg'], 2) ?>" readonly>

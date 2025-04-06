@@ -1,4 +1,3 @@
-
 <?php
 require_once 'auth.php';
 require_once 'functions.php';
@@ -8,11 +7,24 @@ if (!isLoggedIn()) {
     exit();
 }
 
-// Handle order deletion
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_order_id'])) {
-    $orderId = intval($_POST['delete_order_id']);
-    deleteOrder($orderId); // Replace with the function to delete the order
-    $_SESSION['message'] = "Order #$orderId has been deleted.";
+// Handle order cancellation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order_id'])) {
+    $orderId = intval($_POST['cancel_order_id']);
+
+    // For customers, pass their user ID to verify ownership
+    // For employees/admins, don't pass user ID to bypass ownership check
+    if (isAdmin() || canEmployeeProcessOrders()) {
+        $success = cancelOrderByUser($orderId);
+    } else {
+        $success = cancelOrderByUser($orderId, $_SESSION['user_id']);
+    }
+
+    if ($success) {
+        $_SESSION['message'] = "Order #$orderId has been cancelled successfully";
+    } else {
+        $_SESSION['error'] = "Failed to cancel order #$orderId";
+    }
+
     header("Location: orders.php");
     exit();
 }
@@ -114,8 +126,8 @@ unset($_SESSION['message']);
                                 <td>
                                     <?php if ($order['status'] === 'pending'): ?>
                                         <form method="POST" style="display:inline;">
-                                            <input type="hidden" name="delete_order_id" value="<?= $order['id'] ?>">
-                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                            <input type="hidden" name="cancel_order_id" value="<?= $order['id'] ?>">
+                                            <button type="submit" class="btn btn-danger btn-sm">cancell</button>
                                         </form>
                                     <?php else: ?>
                                         <span class="text-muted">No actions available</span>

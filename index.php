@@ -24,8 +24,8 @@ $inventory = getInventory();
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="#">Fish Farm</a>
-            <?php if (isEmployee()): ?>
-                <a class="navbar-brand" href="employee_sales.php">Make a Sale</a>
+            <?php if (isEmployee() || isadmin()): ?>
+                <a class="navbar-brand" href="employee_sales.php">Sale</a>
             <?php endif; ?>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -52,7 +52,6 @@ $inventory = getInventory();
             </div>
         </div>
     </nav>
-
     <div class="container mt-4">
         <h2>Available Fish</h2>
         <div class="row">

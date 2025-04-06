@@ -27,11 +27,6 @@ if (isEmployee()) {
                 <li class="nav-item">
                     <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : '' ?>" href="index.php">
                         Home
-                        <?php if (isEmployee() && !empty($employeeInventory)): ?>
-                            <span class="badge bg-light text-dark ms-1" title="Available Inventory">
-                                <?= array_sum(array_column($employeeInventory, 'quantity')) ?> kg
-                            </span>
-                        <?php endif; ?>
                     </a>
                 </li>
 
@@ -57,11 +52,6 @@ if (isEmployee()) {
                     <li class="nav-item">
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'employee_sales.php' ? 'active' : '' ?>" href="employee_sales.php">
                             Sales
-                            <?php if (!empty($employeeInventory)): ?>
-                                <span class="badge bg-light text-dark ms-1" title="Available for Sale">
-                                    <?= array_sum(array_column($employeeInventory, 'quantity')) ?> kg
-                                </span>
-                            <?php endif; ?>
                         </a>
                     </li>
 
