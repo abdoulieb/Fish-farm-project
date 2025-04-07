@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pettyCash = floatval($_POST['petty_cash'] ?? 0);
     $physicalCash = floatval($_POST['physical_cash'] ?? 0);
 
-    $deficit = $totalCashSales - $physicalCash;
+    $deficit = $physicalCash - $totalCashSales;
     $totalCash = $physicalCash + $pettyCash;
 
     // Save the reconciliation

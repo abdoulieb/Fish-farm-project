@@ -708,8 +708,8 @@ include 'navbar.php';
                                     <?php endif; ?>
                                     <th>Date</th>
                                     <th>Expected (D)</th>
-                                    <th>Physical Cash (D)</th>
-                                    <?php if (isAdmin()): ?>
+
+                                    <?php if (isAdmin() || isEmployee()): ?>
                                         <th>Petty Cash (D)</th>
                                     <?php endif; ?>
                                     <th>Total Cash (D)</th>
@@ -728,8 +728,8 @@ include 'navbar.php';
                                         <?php endif; ?>
                                         <td><?= date('M d, Y', strtotime($report['report_date'])) ?></td>
                                         <td><?= number_format($report['expected_amount'], 2) ?></td>
-                                        <td><?= number_format($report['physical_cash'], 2) ?></td>
-                                        <?php if (isAdmin()): ?>
+
+                                        <?php if (isAdmin() || isEmployee()): ?>
                                             <td><?= number_format($report['petty_cash'], 2) ?></td>
                                         <?php endif; ?>
                                         <td><?= number_format($report['total_cash'], 2) ?></td>

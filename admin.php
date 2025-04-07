@@ -129,16 +129,11 @@ $assignments = $pdo->query("
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab">Inventory</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="location_management.php">Location Management</a>
+            </li>
 
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button" role="tab">Sales Reports</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" type="button" role="tab">Location Management</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="fatality-tab" data-bs-toggle="tab" data-bs-target="#fatality" type="button" role="tab">Fatality Reports</button>
-            </li>
+
             <?php if (isAdmin()): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="manage_employees.php">Manage Employees</a>
@@ -310,40 +305,6 @@ $assignments = $pdo->query("
                         </table>
                     </div>
                 </div>
-
-                <!-- Sales Reports Tab -->
-                <div class="tab-pane fade" id="sales" role="tabpanel">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5>Daily Sales by Employee</h5>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Employee</th>
-                                        <th>Date</th>
-                                        <th>Sales Count</th>
-                                        <th>Total Kg Sold</th>
-                                        <th>Total Revenue</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($dailySales as $sale): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($sale['username']) ?></td>
-                                            <td><?= $sale['sale_day'] ?></td>
-                                            <td><?= $sale['sales_count'] ?></td>
-                                            <td><?= number_format($sale['total_kg'], 2) ?> kg</td>
-                                            <td>D<?= number_format($sale['total_sales'], 2) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Location Management Tab -->
                 <div class="tab-pane fade" id="locations" role="tabpanel">
                     <div class="card">
@@ -411,216 +372,180 @@ $assignments = $pdo->query("
                     </div>
                 </div>
 
-                <!-- Fatality Reports Tab -->
-                <div class="tab-pane fade" id="fatality" role="tabpanel">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5>Fish Fatality Report</h5>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Fish Type</th>
-                                        <th>Total Fingerlings</th>
-                                        <th>Total Fatalities</th>
-                                        <th>Live Count</th>
-                                        <th>Mortality Rate</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($fatalitySummary as $fish): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($fish['name']) ?></td>
-                                            <td><?= $fish['total_fingerlings'] ?></td>
-                                            <td><?= $fish['total_fatalities'] ?></td>
-                                            <td><?= $fish['live_count'] ?></td>
-                                            <td><?= $fish['total_fingerlings'] > 0 ?
-                                                    number_format(($fish['total_fatalities'] / $fish['total_fingerlings']) * 100, 2) . '%' : 'N/A' ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                <!-- Update Inventory Modal -->
+                <div class="modal fade" id="updateInventoryModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Update Inventory</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="update_inventory.php" method="POST">
+                                <div class="modal-body">
+                                    <input type="hidden" id="inventoryFishId" name="fish_type_id">
+                                    <div class="mb-3">
+                                        <label for="inventoryFishName" class="form-label">Fish Type</label>
+                                        <input type="text" class="form-control" id="inventoryFishName" readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="inventoryQuantity" class="form-label">Quantity (kg)</label>
+                                        <input type="number" step="0.1" min="0" class="form-control" id="inventoryQuantity" name="quantity" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Update</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Update Inventory Modal -->
-        <div class="modal fade" id="updateInventoryModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Update Inventory</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <form action="update_inventory.php" method="POST">
-                        <div class="modal-body">
-                            <input type="hidden" id="inventoryFishId" name="fish_type_id">
-                            <div class="mb-3">
-                                <label for="inventoryFishName" class="form-label">Fish Type</label>
-                                <input type="text" class="form-control" id="inventoryFishName" readonly>
+                <!-- Edit Fish Type Modal -->
+                <div class="modal fade" id="editFishModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Fish Type</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <div class="mb-3">
-                                <label for="inventoryQuantity" class="form-label">Quantity (kg)</label>
-                                <input type="number" step="0.1" min="0" class="form-control" id="inventoryQuantity" name="quantity" required>
-                            </div>
+                            <form action="update_fish_type.php" method="POST">
+                                <div class="modal-body">
+                                    <input type="hidden" id="editFishId" name="id">
+                                    <div class="mb-3">
+                                        <label for="editFishName" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="editFishName" name="name" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editFishDescription" class="form-label">Description</label>
+                                        <textarea class="form-control" id="editFishDescription" name="description" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editFishPrice" class="form-label">Price per kg</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" id="editFishPrice" name="price" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Update</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Edit Fish Type Modal -->
-        <div class="modal fade" id="editFishModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit Fish Type</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <form action="update_fish_type.php" method="POST">
-                        <div class="modal-body">
-                            <input type="hidden" id="editFishId" name="id">
-                            <div class="mb-3">
-                                <label for="editFishName" class="form-label">Name</label>
-                                <input type="text" class="form-control" id="editFishName" name="name" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editFishDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="editFishDescription" name="description" rows="3"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editFishPrice" class="form-label">Price per kg</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="editFishPrice" name="price" required>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Fish Type Modal -->
-        <div class="modal fade" id="addFishModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add New Fish Type</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <form action="add_fish_type.php" method="POST">
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="addFishName" class="form-label">Name</label>
-                                <input type="text" class="form-control" id="addFishName" name="name" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="addFishDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="addFishDescription" name="description" rows="3"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="addFishPrice" class="form-label">Price per kg</label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="addFishPrice" name="price" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="addFishInitialQuantity" class="form-label">Initial Quantity (kg)</label>
-                                <input type="number" step="0.1" min="0" class="form-control" id="addFishInitialQuantity" name="initial_quantity" required>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Add Fish Type</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Order Details Modal -->
-        <div class="modal fade" id="orderDetailsModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Order Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body" id="orderDetailsContent">
-                        Loading...
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
-            // Initialize all modals
-            document.getElementById('updateInventoryModal').addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var fishId = button.getAttribute('data-id');
-                var fishName = button.getAttribute('data-name');
-                var quantity = button.getAttribute('data-quantity');
+                <!-- Add Fish Type Modal -->
+                <div class="modal fade" id="addFishModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Add New Fish Type</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="add_fish_type.php" method="POST">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="addFishName" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="addFishName" name="name" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="addFishDescription" class="form-label">Description</label>
+                                        <textarea class="form-control" id="addFishDescription" name="description" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="addFishPrice" class="form-label">Price per kg</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" id="addFishPrice" name="price" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="addFishInitialQuantity" class="form-label">Initial Quantity (kg)</label>
+                                        <input type="number" step="0.1" min="0" class="form-control" id="addFishInitialQuantity" name="initial_quantity" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Add Fish Type</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
 
-                var modal = this;
-                modal.querySelector('#inventoryFishId').value = fishId;
-                modal.querySelector('#inventoryFishName').value = fishName;
-                modal.querySelector('#inventoryQuantity').value = quantity;
-            });
+                <!-- Order Details Modal -->
+                <div class="modal fade" id="orderDetailsModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Order Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="orderDetailsContent">
+                                Loading...
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            document.getElementById('editFishModal').addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var fishId = button.getAttribute('data-id');
-                var fishName = button.getAttribute('data-name');
-                var description = button.getAttribute('data-description');
-                var price = button.getAttribute('data-price');
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+                <script>
+                    // Initialize all modals
+                    document.getElementById('updateInventoryModal').addEventListener('show.bs.modal', function(event) {
+                        var button = event.relatedTarget;
+                        var fishId = button.getAttribute('data-id');
+                        var fishName = button.getAttribute('data-name');
+                        var quantity = button.getAttribute('data-quantity');
 
-                var modal = this;
-                modal.querySelector('#editFishId').value = fishId;
-                modal.querySelector('#editFishName').value = fishName;
-                modal.querySelector('#editFishDescription').value = description;
-                modal.querySelector('#editFishPrice').value = price;
-            });
-
-            document.getElementById('orderDetailsModal').addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var orderId = button.getAttribute('data-id');
-
-                var modal = this;
-                var content = modal.querySelector('#orderDetailsContent');
-                content.innerHTML = 'Loading...';
-
-                // Fetch order details via AJAX
-                fetch('get_order_details.php?order_id=' + orderId)
-                    .then(response => response.text())
-                    .then(data => {
-                        content.innerHTML = data;
-                    })
-                    .catch(error => {
-                        content.innerHTML = 'Error loading order details.';
+                        var modal = this;
+                        modal.querySelector('#inventoryFishId').value = fishId;
+                        modal.querySelector('#inventoryFishName').value = fishName;
+                        modal.querySelector('#inventoryQuantity').value = quantity;
                     });
-            });
 
-            // Tab functionality
-            const triggerTabList = [].slice.call(document.querySelectorAll('#adminTabs button'));
-            triggerTabList.forEach(function(triggerEl) {
-                const tabTrigger = new bootstrap.Tab(triggerEl);
-                triggerEl.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    tabTrigger.show();
-                });
-            });
-        </script>
+                    document.getElementById('editFishModal').addEventListener('show.bs.modal', function(event) {
+                        var button = event.relatedTarget;
+                        var fishId = button.getAttribute('data-id');
+                        var fishName = button.getAttribute('data-name');
+                        var description = button.getAttribute('data-description');
+                        var price = button.getAttribute('data-price');
+
+                        var modal = this;
+                        modal.querySelector('#editFishId').value = fishId;
+                        modal.querySelector('#editFishName').value = fishName;
+                        modal.querySelector('#editFishDescription').value = description;
+                        modal.querySelector('#editFishPrice').value = price;
+                    });
+
+                    document.getElementById('orderDetailsModal').addEventListener('show.bs.modal', function(event) {
+                        var button = event.relatedTarget;
+                        var orderId = button.getAttribute('data-id');
+
+                        var modal = this;
+                        var content = modal.querySelector('#orderDetailsContent');
+                        content.innerHTML = 'Loading...';
+
+                        // Fetch order details via AJAX
+                        fetch('get_order_details.php?order_id=' + orderId)
+                            .then(response => response.text())
+                            .then(data => {
+                                content.innerHTML = data;
+                            })
+                            .catch(error => {
+                                content.innerHTML = 'Error loading order details.';
+                            });
+                    });
+
+                    // Tab functionality
+                    const triggerTabList = [].slice.call(document.querySelectorAll('#adminTabs button'));
+                    triggerTabList.forEach(function(triggerEl) {
+                        const tabTrigger = new bootstrap.Tab(triggerEl);
+                        triggerEl.addEventListener('click', function(event) {
+                            event.preventDefault();
+                            tabTrigger.show();
+                        });
+                    });
+                </script>
 </body>
 
 </html>
