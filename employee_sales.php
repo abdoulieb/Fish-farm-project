@@ -32,15 +32,28 @@ $fishTypes = $assignedInventory->fetchAll();
 
 // Get sales history based on user role
 if (isAdmin()) {
-    $employeeSales = $pdo->prepare("
+    $employeeFilter = isset($_GET['employee_id']) ? intval($_GET['employee_id']) : null;
+
+    $sql = "
         SELECT s.*, COUNT(si.id) as item_count, SUM(si.quantity_kg) as total_kg, u.username as employee_name
         FROM sales s
         LEFT JOIN sale_items si ON s.id = si.sale_id
         LEFT JOIN users u ON s.employee_id = u.id
-        GROUP BY s.id
-        ORDER BY s.sale_date DESC
-    ");
-    $employeeSales->execute();
+    ";
+
+    if ($employeeFilter) {
+        $sql .= " WHERE s.employee_id = :employee_id ";
+    }
+
+    $sql .= " GROUP BY s.id ORDER BY s.sale_date DESC";
+
+    $employeeSales = $pdo->prepare($sql);
+
+    if ($employeeFilter) {
+        $employeeSales->execute([':employee_id' => $employeeFilter]);
+    } else {
+        $employeeSales->execute();
+    }
 } else {
     $employeeSales = $pdo->prepare("
         SELECT s.*, COUNT(si.id) as item_count, SUM(si.quantity_kg) as total_kg
@@ -493,7 +506,24 @@ include 'navbar.php';
 
             <!-- Sales History Tab -->
             <div class="tab-pane fade" id="sales" role="tabpanel">
-                <h4>Sales History</h4>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Sales History</h4>
+                    <?php if (isAdmin()): ?>
+                        <div class="col-md-4">
+                            <select class="form-select" id="employeeFilter">
+                                <option value="">All Employees</option>
+                                <?php
+                                $allEmployees = $pdo->query("SELECT id, username FROM users WHERE role = 'employee' ORDER BY username")->fetchAll();
+                                foreach ($allEmployees as $emp): ?>
+                                    <option value="<?= $emp['id'] ?>" <?= isset($_GET['employee_id']) && $_GET['employee_id'] == $emp['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($emp['username']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
                 <?php if (empty($sales)): ?>
                     <div class="alert alert-info">No sales recorded yet.</div>
                 <?php else: ?>
@@ -525,7 +555,7 @@ include 'navbar.php';
                                         <td>D<?= number_format($sale['total_amount'], 2) ?></td>
                                         <td>
                                             <span class="payment-method-badge 
-                                                <?= $sale['payment_method'] === 'cash' ? 'cash-badge' : ($sale['payment_method'] === 'credit' ? 'credit-badge' : 'mobile-badge') ?>">
+                                    <?= $sale['payment_method'] === 'cash' ? 'cash-badge' : ($sale['payment_method'] === 'credit' ? 'credit-badge' : 'mobile-badge') ?>">
                                                 <?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?>
                                             </span>
                                         </td>
@@ -536,7 +566,6 @@ include 'navbar.php';
                     </div>
                 <?php endif; ?>
             </div>
-
             <!-- Daily Report Tab -->
             <div class="tab-pane fade" id="daily-report" role="tabpanel">
                 <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
@@ -850,6 +879,15 @@ include 'navbar.php';
                     tabTrigger.show();
                 });
             });
+        });
+        // Add this to your existing JavaScript section
+        document.getElementById('employeeFilter')?.addEventListener('change', function() {
+            const employeeId = this.value;
+            if (employeeId) {
+                window.location.href = `employee_sales.php?employee_id=${employeeId}`;
+            } else {
+                window.location.href = 'employee_sales.php';
+            }
         });
     </script>
 </body>
