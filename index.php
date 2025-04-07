@@ -43,6 +43,11 @@ $inventory = getInventory();
                             <a class="nav-link" href="admin.php">Admin</a>
                         </li>
                     <?php endif; ?>
+                    <?php if (canEmployeeRecordFatality() || isAdmin()): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'fatality_records.php' ? 'active' : '' ?>" href="fatality_records.php">Record Fatality</a>
+                        </li>
+                    <?php endif; ?>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
