@@ -117,7 +117,6 @@ $assignments = $pdo->query("
                         <a class="nav-link" href="logout.php">Logout (<?= htmlspecialchars($_SESSION['username']) ?>)</a>
                     </li>
                 </ul>
-
             </div>
         </div>
     </nav>

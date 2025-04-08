@@ -61,7 +61,7 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
             left: 0;
             width: 100%;
             height: 100px;
-            background: linear-gradient(to bottom, transparent, rgb(128, 138, 118));
+            background: linear-gradient(to bottom, transparent, white);
         }
 
         .hero-content {
@@ -694,67 +694,10 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
         </div>
     </section>
 
-    <!-- Add this script at the bottom of welcome.php -->
-    <script>
-        // Function to update shop status in real-time
-        function updateShopStatus() {
-            fetch('get_shop_status.php')
-                .then(response => response.json())
-                .then(data => {
-                    data.forEach(shop => {
-                        const currentTime = new Date();
-                        const shopOpenTime = new Date();
-                        const shopCloseTime = new Date();
-
-                        // Set open and close times
-                        const [openHours, openMinutes] = shop.opening_time.split(':');
-                        const [closeHours, closeMinutes] = shop.closing_time.split(':');
-
-                        shopOpenTime.setHours(openHours, openMinutes, 0);
-                        shopCloseTime.setHours(closeHours, closeMinutes, 0);
-
-                        // Check if currently open
-                        const isOpenNow = shop.is_open &&
-                            currentTime >= shopOpenTime &&
-                            currentTime <= shopCloseTime;
-
-                        // Update the status badge
-                        const statusBadge = document.querySelector(`.shop-status[data-shop-id="${shop.id}"]`);
-                        if (statusBadge) {
-                            statusBadge.textContent = isOpenNow ? 'Open Now' : 'Closed';
-                            statusBadge.className = isOpenNow ? 'badge bg-success' : 'badge bg-danger';
-                        }
-
-                        // Update the hours display
-                        const hoursDisplay = document.querySelector(`.shop-hours[data-shop-id="${shop.id}"]`);
-                        if (hoursDisplay) {
-                            hoursDisplay.textContent = `${formatTime(shop.opening_time)} - ${formatTime(shop.closing_time)}`;
-                        }
-                    });
-                })
-                .catch(error => console.error('Error fetching shop status:', error));
-        }
-
-        // Helper function to format time
-        function formatTime(timeString) {
-            const [hours, minutes] = timeString.split(':');
-            const hour = parseInt(hours);
-            const ampm = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour % 12 || 12;
-            return `${displayHour}:${minutes} ${ampm}`;
-        }
-
-        // Update status every minute
-        setInterval(updateShopStatus, 60000);
-
-        // Initial update
-        updateShopStatus();
-    </script>
-
     <!-- Location Section -->
     <section class="py-5" id="location">
         <div class="container">
-            <h2 class="text-center section-title">Our Farm Location</h2>
+            <h2 class="text-center section-title">Our Location</h2>
             <div class="row">
                 <div class="col-md-6 mb-4 mb-md-0">
                     <div id="map">
@@ -1047,7 +990,62 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
         });
 
         window.addEventListener('scroll', animateOnScroll);
-        animateOnScroll(); // Run once on page load
+        animateOnScroll();
+
+
+        // Function to update shop status in real-time
+        function updateShopStatus() {
+            fetch('get_shop_status.php')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(shop => {
+                        const currentTime = new Date();
+                        const shopOpenTime = new Date();
+                        const shopCloseTime = new Date();
+
+                        // Set open and close times
+                        const [openHours, openMinutes] = shop.opening_time.split(':');
+                        const [closeHours, closeMinutes] = shop.closing_time.split(':');
+
+                        shopOpenTime.setHours(openHours, openMinutes, 0);
+                        shopCloseTime.setHours(closeHours, closeMinutes, 0);
+
+                        // Check if currently open
+                        const isOpenNow = shop.is_open &&
+                            currentTime >= shopOpenTime &&
+                            currentTime <= shopCloseTime;
+
+                        // Update the status badge
+                        const statusBadge = document.querySelector(`.shop-status[data-shop-id="${shop.id}"]`);
+                        if (statusBadge) {
+                            statusBadge.textContent = isOpenNow ? 'Open Now' : 'Closed';
+                            statusBadge.className = isOpenNow ? 'badge bg-success' : 'badge bg-danger';
+                        }
+
+                        // Update the hours display
+                        const hoursDisplay = document.querySelector(`.shop-hours[data-shop-id="${shop.id}"]`);
+                        if (hoursDisplay) {
+                            hoursDisplay.textContent = `${formatTime(shop.opening_time)} - ${formatTime(shop.closing_time)}`;
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching shop status:', error));
+        }
+
+        // Helper function to format time
+        function formatTime(timeString) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        // Update status every minute
+        setInterval(updateShopStatus, 60000);
+
+        // Initial update
+        updateShopStatus(); // Run once on page load
     </script>
 </body>
 

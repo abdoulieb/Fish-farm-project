@@ -29,12 +29,6 @@ if (isEmployee()) {
                         Home
                     </a>
                 </li>
-                <?php if (isEmployee()): ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'shop_management.php' ? 'active' : '' ?>" href="shop_management.php">Manage Shop</a>
-                    </li>
-                <?php endif; ?>
-
                 <?php if (isLoggedIn()): ?>
                     <li class="nav-item">
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'orders.php' ? 'active' : '' ?>" href="orders.php">My Orders</a>
