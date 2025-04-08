@@ -61,7 +61,7 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
             left: 0;
             width: 100%;
             height: 100px;
-            background: linear-gradient(to bottom, transparent, white);
+            background: linear-gradient(to bottom, transparent, rgb(128, 138, 118));
         }
 
         .hero-content {
@@ -639,11 +639,122 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
             </div>
         </div>
     </section>
+    <!-- Shop Locations Section -->
+    <section class="py-5 bg-light" id="shops">
+        <div class="container">
+            <h2 class="text-center section-title">Our Shop Locations</h2>
+            <p class="text-center mb-5 lead">Visit us at one of our convenient locations</p>
+
+            <div class="row g-4" id="shopLocationsContainer">
+                <?php
+                $shopLocations = $pdo->query("
+                SELECT sl.*, u.username as employee_name 
+                FROM shop_locations sl
+                JOIN users u ON sl.employee_id = u.id
+                WHERE sl.is_open = 1
+                ORDER BY sl.region, sl.location_name
+            ")->fetchAll();
+
+                foreach ($shopLocations as $shop):
+                    $currentTime = date('H:i:s');
+                    $isCurrentlyOpen = ($currentTime >= $shop['opening_time'] && $currentTime <= $shop['closing_time']) && $shop['is_open'];
+                ?>
+                    <div class="col-md-4">
+                        <div class="feature-box">
+                            <h3><?= htmlspecialchars($shop['location_name']) ?></h3>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                                <?= htmlspecialchars($shop['region']) ?>
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-user text-primary me-2"></i>
+                                <?= htmlspecialchars($shop['employee_name']) ?>
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-phone text-primary me-2"></i>
+                                <?= htmlspecialchars($shop['contact_phone']) ?>
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-clock text-primary me-2"></i>
+                                <span class="shop-hours" data-shop-id="<?= $shop['id'] ?>">
+                                    <?= date('g:i A', strtotime($shop['opening_time'])) ?> -
+                                    <?= date('g:i A', strtotime($shop['closing_time'])) ?>
+                                </span>
+                            </p>
+                            <p class="mt-2">
+                                <span class="badge bg-<?= $isCurrentlyOpen ? 'success' : 'danger' ?> shop-status"
+                                    data-shop-id="<?= $shop['id'] ?>">
+                                    <?= $isCurrentlyOpen ? 'Open Now' : 'Closed' ?>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add this script at the bottom of welcome.php -->
+    <script>
+        // Function to update shop status in real-time
+        function updateShopStatus() {
+            fetch('get_shop_status.php')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(shop => {
+                        const currentTime = new Date();
+                        const shopOpenTime = new Date();
+                        const shopCloseTime = new Date();
+
+                        // Set open and close times
+                        const [openHours, openMinutes] = shop.opening_time.split(':');
+                        const [closeHours, closeMinutes] = shop.closing_time.split(':');
+
+                        shopOpenTime.setHours(openHours, openMinutes, 0);
+                        shopCloseTime.setHours(closeHours, closeMinutes, 0);
+
+                        // Check if currently open
+                        const isOpenNow = shop.is_open &&
+                            currentTime >= shopOpenTime &&
+                            currentTime <= shopCloseTime;
+
+                        // Update the status badge
+                        const statusBadge = document.querySelector(`.shop-status[data-shop-id="${shop.id}"]`);
+                        if (statusBadge) {
+                            statusBadge.textContent = isOpenNow ? 'Open Now' : 'Closed';
+                            statusBadge.className = isOpenNow ? 'badge bg-success' : 'badge bg-danger';
+                        }
+
+                        // Update the hours display
+                        const hoursDisplay = document.querySelector(`.shop-hours[data-shop-id="${shop.id}"]`);
+                        if (hoursDisplay) {
+                            hoursDisplay.textContent = `${formatTime(shop.opening_time)} - ${formatTime(shop.closing_time)}`;
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching shop status:', error));
+        }
+
+        // Helper function to format time
+        function formatTime(timeString) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        // Update status every minute
+        setInterval(updateShopStatus, 60000);
+
+        // Initial update
+        updateShopStatus();
+    </script>
 
     <!-- Location Section -->
     <section class="py-5" id="location">
         <div class="container">
-            <h2 class="text-center section-title">Our Location</h2>
+            <h2 class="text-center section-title">Our Farm Location</h2>
             <div class="row">
                 <div class="col-md-6 mb-4 mb-md-0">
                     <div id="map">

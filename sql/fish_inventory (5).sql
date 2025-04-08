@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 08, 2025 at 04:26 AM
+-- Generation Time: Apr 08, 2025 at 02:05 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -471,6 +471,32 @@ INSERT INTO `sale_items` (`id`, `sale_id`, `fish_type_id`, `quantity_kg`, `unit_
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `shop_locations`
+--
+
+CREATE TABLE `shop_locations` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `location_name` varchar(100) NOT NULL,
+  `region` varchar(100) NOT NULL,
+  `contact_phone` varchar(20) NOT NULL,
+  `opening_time` time NOT NULL,
+  `closing_time` time NOT NULL,
+  `is_open` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `shop_locations`
+--
+
+INSERT INTO `shop_locations` (`id`, `employee_id`, `location_name`, `region`, `contact_phone`, `opening_time`, `closing_time`, `is_open`, `created_at`, `updated_at`) VALUES
+(1, 5, 'Abdoulie Bah', 'Kombo kuloro', '3114881', '08:00:00', '17:00:00', 1, '2025-04-08 11:15:42', '2025-04-08 11:20:55');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `team_members`
 --
 
@@ -619,6 +645,13 @@ ALTER TABLE `sale_items`
   ADD KEY `fish_type_id` (`fish_type_id`);
 
 --
+-- Indexes for table `shop_locations`
+--
+ALTER TABLE `shop_locations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `employee_id` (`employee_id`);
+
+--
 -- Indexes for table `team_members`
 --
 ALTER TABLE `team_members`
@@ -721,6 +754,12 @@ ALTER TABLE `sale_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
+-- AUTO_INCREMENT for table `shop_locations`
+--
+ALTER TABLE `shop_locations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `team_members`
 --
 ALTER TABLE `team_members`
@@ -793,6 +832,12 @@ ALTER TABLE `sales`
 ALTER TABLE `sale_items`
   ADD CONSTRAINT `sale_items_ibfk_1` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`),
   ADD CONSTRAINT `sale_items_ibfk_2` FOREIGN KEY (`fish_type_id`) REFERENCES `fish_types` (`id`);
+
+--
+-- Constraints for table `shop_locations`
+--
+ALTER TABLE `shop_locations`
+  ADD CONSTRAINT `shop_locations_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `users` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

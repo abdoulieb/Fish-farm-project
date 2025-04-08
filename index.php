@@ -77,9 +77,15 @@ $inventory = getInventory();
                     <li class="nav-item">
                         <a class="nav-link active" href="index.php">Home</a>
                     </li>
+                    <?php if (isEmployee() || isAdmin()): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="shop_management.php">Manage Shop</a>
+                        </li>
+                    <?php endif; ?>
                     <li class="nav-item">
                         <a class="nav-link" href="orders.php">My Orders</a>
                     </li>
+
                     <?php if (isAdmin()): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="admin.php">Admin</a>

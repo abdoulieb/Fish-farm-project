@@ -244,6 +244,120 @@ if (isset($_SESSION['error'])) {
             </div>
         </div>
 
+        <div class="tab-pane fade" id="shops" role="tabpanel">
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5>All Shop Locations</h5>
+                    <button id="refreshShops" class="btn btn-sm btn-light">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped" id="shopsTable">
+                        <thead>
+                            <tr>
+                                <th>Location</th>
+                                <th>Region</th>
+                                <th>Employee</th>
+                                <th>Contact</th>
+                                <th>Hours</th>
+                                <th>Status</th>
+                                <th>Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $allShops = $pdo->query("
+                        SELECT sl.*, u.username as employee_name 
+                        FROM shop_locations sl
+                        JOIN users u ON sl.employee_id = u.id
+                        ORDER BY sl.region, sl.location_name
+                    ")->fetchAll();
+
+                            foreach ($allShops as $shop):
+                                $currentTime = date('H:i:s');
+                                $isOpenNow = ($currentTime >= $shop['opening_time'] && $currentTime <= $shop['closing_time']) && $shop['is_open'];
+                            ?>
+                                <tr data-shop-id="<?= $shop['id'] ?>">
+                                    <td><?= htmlspecialchars($shop['location_name']) ?></td>
+                                    <td><?= htmlspecialchars($shop['region']) ?></td>
+                                    <td><?= htmlspecialchars($shop['employee_name']) ?></td>
+                                    <td><?= htmlspecialchars($shop['contact_phone']) ?></td>
+                                    <td class="shop-hours">
+                                        <?= date('g:i A', strtotime($shop['opening_time'])) ?> -
+                                        <?= date('g:i A', strtotime($shop['closing_time'])) ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?= $isOpenNow ? 'bg-success' : 'bg-danger' ?> shop-status">
+                                            <?= $isOpenNow ? 'Open' : 'Closed' ?>
+                                        </span>
+                                    </td>
+                                    <td><?= date('M j, g:i a', strtotime($shop['updated_at'])) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Function to refresh shop status in admin panel
+            function refreshShopStatus() {
+                fetch('get_shop_status.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(shop => {
+                            const currentTime = new Date();
+                            const shopOpenTime = new Date();
+                            const shopCloseTime = new Date();
+
+                            // Set open and close times
+                            const [openHours, openMinutes] = shop.opening_time.split(':');
+                            const [closeHours, closeMinutes] = shop.closing_time.split(':');
+
+                            shopOpenTime.setHours(openHours, openMinutes, 0);
+                            shopCloseTime.setHours(closeHours, closeMinutes, 0);
+
+                            // Check if currently open
+                            const isOpenNow = shop.is_open &&
+                                currentTime >= shopOpenTime &&
+                                currentTime <= shopCloseTime;
+
+                            // Update the table row
+                            const row = document.querySelector(`tr[data-shop-id="${shop.id}"]`);
+                            if (row) {
+                                const statusCell = row.querySelector('.shop-status');
+                                if (statusCell) {
+                                    statusCell.textContent = isOpenNow ? 'Open' : 'Closed';
+                                    statusCell.className = isOpenNow ? 'badge bg-success' : 'badge bg-danger';
+                                }
+
+                                const hoursCell = row.querySelector('.shop-hours');
+                                if (hoursCell) {
+                                    hoursCell.textContent = `${formatTime(shop.opening_time)} - ${formatTime(shop.closing_time)}`;
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Error fetching shop status:', error));
+            }
+
+            // Helper function to format time
+            function formatTime(timeString) {
+                const [hours, minutes] = timeString.split(':');
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const displayHour = hour % 12 || 12;
+                return `${displayHour}:${minutes} ${ampm}`;
+            }
+
+            // Manual refresh button
+            document.getElementById('refreshShops').addEventListener('click', refreshShopStatus);
+
+            // Auto-refresh every 5 minutes
+            setInterval(refreshShopStatus, 300000);
+        </script>
         <!-- Existing Partners -->
         <div class="row mt-4">
             <div class="col-12">
