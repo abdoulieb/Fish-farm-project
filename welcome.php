@@ -1,6 +1,9 @@
 <?php
 require_once 'config.php';
 
+// Define $isAdmin based on your application's logic
+$isAdmin = isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+
 // Get fish types for display
 $stmt = $pdo->query("SELECT * FROM fish_types");
 $fishTypes = $stmt->fetchAll();
@@ -8,6 +11,14 @@ $fishTypes = $stmt->fetchAll();
 // Get inventory for display
 $stmt = $pdo->query("SELECT i.*, f.name FROM inventory i JOIN fish_types f ON i.fish_type_id = f.id");
 $inventory = $stmt->fetchAll();
+
+// Get team members
+$teamMembers = $pdo->query("SELECT * FROM team_members ORDER BY position_order")->fetchAll();
+
+// Get partners
+$partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,6 +90,7 @@ $inventory = $stmt->fetchAll();
             background: var(--primary-color);
         }
 
+        /* Add to the existing styles in welcome.php */
         .fish-card {
             transition: all 0.3s ease;
             height: 100%;
@@ -86,6 +98,8 @@ $inventory = $stmt->fetchAll();
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .fish-card:hover {
@@ -93,16 +107,22 @@ $inventory = $stmt->fetchAll();
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
         }
 
+        .fish-card .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fish-card .card-body p {
+            flex: 1;
+        }
+
         .fish-icon {
             font-size: 3rem;
             color: var(--primary-color);
             margin-bottom: 15px;
             transition: all 0.3s ease;
-        }
-
-        .fish-card:hover .fish-icon {
-            transform: scale(1.2);
-            color: var(--secondary-color);
+            text-align: center;
         }
 
         .contact-form {
@@ -250,6 +270,80 @@ $inventory = $stmt->fetchAll();
         .back-to-top:hover {
             transform: translateY(-5px);
         }
+
+        .team-section {
+            background-color: #f8f9fa;
+        }
+
+        .team-card {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .team-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .team-img {
+            height: 250px;
+            object-fit: cover;
+            width: 100%;
+        }
+
+        .team-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            color: white;
+            padding: 20px;
+        }
+
+        .partner-logo {
+            height: 100px;
+            object-fit: contain;
+            margin: 0 auto;
+            display: block;
+            filter: grayscale(100%);
+            transition: all 0.3s ease;
+        }
+
+        .partner-logo:hover {
+            filter: grayscale(0%);
+            transform: scale(1.1);
+        }
+
+        .edit-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .team-card:hover .edit-btn,
+        .fish-card:hover .edit-btn {
+            opacity: 1;
+        }
+
+        /* Modal styles for image upload */
+        .image-upload-modal .modal-dialog {
+            max-width: 800px;
+        }
+
+        .preview-image {
+            max-height: 300px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
 
@@ -280,11 +374,10 @@ $inventory = $stmt->fetchAll();
                     <li class="nav-item">
                         <a class="nav-link" href="#contact">Contact</a>
                     </li>
+
                 </ul>
-                <div class="d-flex">
-                    <a href="login.php" class="btn btn-outline-light me-2">Login</a>
-                    <a href="register.php" class="btn btn-light">Register</a>
-                </div>
+                <a href="login.php" class="btn btn-outline-light me-2">Login</a>
+                <a href="register.php" class="btn btn-light">Register</a>
             </div>
         </div>
     </nav>
@@ -408,7 +501,8 @@ $inventory = $stmt->fetchAll();
         </div>
     </section>
 
-    <!-- Products Section -->
+    <!-- In the Products Section of welcome.php -->
+    <!-- Products Section with edit buttons -->
     <section class="py-5" id="products">
         <div class="container">
             <h2 class="text-center section-title">Our Fish Products</h2>
@@ -425,10 +519,25 @@ $inventory = $stmt->fetchAll();
                 ?>
                     <div class="col-md-4">
                         <div class="card fish-card">
-                            <div class="card-body text-center p-4">
-                                <div class="fish-icon">
+                            <?php if ($isAdmin): ?>
+                                <button class="btn btn-sm btn-warning edit-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#imageUploadModal"
+                                    data-id="<?= $fish['id'] ?>"
+                                    data-type="fish"
+                                    data-current-image="<?= htmlspecialchars($fish['image_path']) ?>">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            <?php endif; ?>
+
+                            <?php if (!empty($fish['image_path'])): ?>
+                                <img src="<?= htmlspecialchars($fish['image_path']) ?>" class="card-img-top" alt="<?= htmlspecialchars($fish['name']) ?>" style="height: 200px; object-fit: cover;">
+                            <?php else: ?>
+                                <div class="fish-icon p-4">
                                     <i class="fas fa-fish"></i>
                                 </div>
+                            <?php endif; ?>
+                            <div class="card-body text-center p-4">
                                 <h3 class="mb-3"><?= htmlspecialchars($fish['name']) ?></h3>
                                 <p class="text-muted mb-4"><?= htmlspecialchars($fish['description']) ?></p>
                                 <div class="d-flex justify-content-between align-items-center">
@@ -443,6 +552,63 @@ $inventory = $stmt->fetchAll();
                                     <button class="btn btn-secondary mt-4 w-100" disabled>Notify When Available</button>
                                 <?php endif; ?>
                             </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <section class="py-5 team-section" id="team">
+        <div class="container">
+            <h2 class="text-center section-title">Our Team</h2>
+            <p class="text-center mb-5 lead">Meet the dedicated professionals behind our success</p>
+            <div class="row g-4">
+                <?php
+                $teamMembers = $pdo->query("SELECT * FROM team_members ORDER BY position_order")->fetchAll();
+                foreach ($teamMembers as $member): ?>
+                    <div class="col-md-4">
+                        <div class="team-card">
+                            <img src="<?= htmlspecialchars($member['photo_url']) ?>" class="team-img" alt="<?= htmlspecialchars($member['name']) ?>">
+                            <div class="team-overlay">
+                                <h4><?= htmlspecialchars($member['name']) ?></h4>
+                                <p class="mb-1"><?= htmlspecialchars($member['position']) ?></p>
+                                <div class="social-links mt-2">
+                                    <?php if (!empty($member['facebook'])): ?>
+                                        <a href="<?= htmlspecialchars($member['facebook']) ?>" class="text-white me-2"><i class="fab fa-facebook-f"></i></a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($member['twitter'])): ?>
+                                        <a href="<?= htmlspecialchars($member['twitter']) ?>" class="text-white me-2"><i class="fab fa-twitter"></i></a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($member['linkedin'])): ?>
+                                        <a href="<?= htmlspecialchars($member['linkedin']) ?>" class="text-white"><i class="fab fa-linkedin-in"></i></a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5" id="partners">
+        <div class="container">
+            <h2 class="text-center section-title">Our Partners</h2>
+            <p class="text-center mb-5 lead">Trusted organizations we collaborate with</p>
+            <div class="row g-4">
+                <?php
+                $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
+                foreach ($partners as $partner): ?>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center p-3">
+                            <?php if (!empty($partner['logo_url'])): ?>
+                                <img src="<?= htmlspecialchars($partner['logo_url']) ?>" class="partner-logo" alt="<?= htmlspecialchars($partner['name']) ?>">
+                            <?php else: ?>
+                                <div class="partner-logo-placeholder bg-light d-flex align-items-center justify-content-center" style="height: 100px;">
+                                    <span class="text-muted"><?= htmlspecialchars($partner['name']) ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <h5 class="mt-3 text-center"><?= htmlspecialchars($partner['name']) ?></h5>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -617,6 +783,44 @@ $inventory = $stmt->fetchAll();
             </div>
         </div>
     </footer>
+    <div class="modal fade image-upload-modal" id="imageUploadModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="imageUploadForm" action="update_image.php" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <input type="hidden" id="itemId" name="item_id">
+                        <input type="hidden" id="itemType" name="item_type">
+
+                        <div class="mb-3 text-center">
+                            <img id="currentImagePreview" class="preview-image mb-3" src="" alt="Current Image">
+                            <div id="noImageMessage" class="alert alert-info" style="display: none;">
+                                No image currently set
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="newImage" class="form-label">Upload New Image</label>
+                            <input class="form-control" type="file" id="newImage" name="image" accept="image/*">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="imageCaption" class="form-label">Caption (optional)</label>
+                            <input type="text" class="form-control" id="imageCaption" name="caption">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Floating Action Button -->
     <a href="https://wa.me/220311481" class="floating-action-btn animate__animated animate__bounceIn">
@@ -669,6 +873,67 @@ $inventory = $stmt->fetchAll();
                 }
             });
         }
+        // Initialize image upload modal
+        document.getElementById('imageUploadModal').addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var itemId = button.getAttribute('data-id');
+            var itemType = button.getAttribute('data-type');
+            var currentImage = button.getAttribute('data-current-image');
+
+            var modal = this;
+            modal.querySelector('#itemId').value = itemId;
+            modal.querySelector('#itemType').value = itemType;
+
+            var preview = modal.querySelector('#currentImagePreview');
+            var noImageMessage = modal.querySelector('#noImageMessage');
+
+            if (currentImage && currentImage !== '') {
+                preview.src = currentImage;
+                preview.style.display = 'block';
+                noImageMessage.style.display = 'none';
+            } else {
+                preview.style.display = 'none';
+                noImageMessage.style.display = 'block';
+            }
+        });
+
+        // Preview image before upload
+        document.getElementById('newImage').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('currentImagePreview').src = event.target.result;
+                    document.getElementById('currentImagePreview').style.display = 'block';
+                    document.getElementById('noImageMessage').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission with feedback
+        document.getElementById('imageUploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var formData = new FormData(this);
+
+            fetch('update_image.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Image updated successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error uploading image: ' + error);
+                });
+        });
 
         window.addEventListener('scroll', animateOnScroll);
         animateOnScroll(); // Run once on page load

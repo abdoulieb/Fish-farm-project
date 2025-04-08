@@ -204,6 +204,7 @@ $assignments = $pdo->query("
                                                         data-id="<?= $fish['id'] ?>" data-name="<?= htmlspecialchars($fish['name']) ?>"
                                                         data-description="<?= htmlspecialchars($fish['description']) ?>"
                                                         data-price="<?= $fish['price_per_kg'] ?>">
+
                                                         Edit
                                                     </button>
                                                 </td>
@@ -409,9 +410,10 @@ $assignments = $pdo->query("
                                 <h5 class="modal-title">Edit Fish Type</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <form action="update_fish_type.php" method="POST">
+                            <form action="update_fish_type.php" method="POST" enctype="multipart/form-data">
                                 <div class="modal-body">
                                     <input type="hidden" id="editFishId" name="id">
+                                    <input type="hidden" id="editCurrentImage" name="current_image">
                                     <div class="mb-3">
                                         <label for="editFishName" class="form-label">Name</label>
                                         <input type="text" class="form-control" id="editFishName" name="name" required>
@@ -424,6 +426,12 @@ $assignments = $pdo->query("
                                         <label for="editFishPrice" class="form-label">Price per kg</label>
                                         <input type="number" step="0.01" min="0" class="form-control" id="editFishPrice" name="price" required>
                                     </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Current Image</label>
+                                        <div id="editFishImagePreview" class="mb-2"></div>
+                                        <label for="editFishImage" class="form-label">Change Image</label>
+                                        <input type="file" class="form-control" id="editFishImage" name="image_path" accept="image/*">
+                                    </div>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -433,7 +441,6 @@ $assignments = $pdo->query("
                         </div>
                     </div>
                 </div>
-
                 <!-- Add Fish Type Modal -->
                 <div class="modal fade" id="addFishModal" tabindex="-1">
                     <div class="modal-dialog">
@@ -442,7 +449,7 @@ $assignments = $pdo->query("
                                 <h5 class="modal-title">Add New Fish Type</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <form action="add_fish_type.php" method="POST">
+                            <form action="add_fish_type.php" method="POST" enctype="multipart/form-data">
                                 <div class="modal-body">
                                     <div class="mb-3">
                                         <label for="addFishName" class="form-label">Name</label>
@@ -459,6 +466,10 @@ $assignments = $pdo->query("
                                     <div class="mb-3">
                                         <label for="addFishInitialQuantity" class="form-label">Initial Quantity (kg)</label>
                                         <input type="number" step="0.1" min="0" class="form-control" id="addFishInitialQuantity" name="initial_quantity" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="addFishimage" class="form-label">image</label>
+                                        <input type="file" class="form-control" id="addFishimage" name="image_paths" accept="image/*" required>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -509,12 +520,21 @@ $assignments = $pdo->query("
                         var fishName = button.getAttribute('data-name');
                         var description = button.getAttribute('data-description');
                         var price = button.getAttribute('data-price');
+                        var imagePath = button.getAttribute('data-image');
 
                         var modal = this;
                         modal.querySelector('#editFishId').value = fishId;
                         modal.querySelector('#editFishName').value = fishName;
                         modal.querySelector('#editFishDescription').value = description;
                         modal.querySelector('#editFishPrice').value = price;
+                        modal.querySelector('#editCurrentImage').value = imagePath;
+
+                        var imagePreview = modal.querySelector('#editFishImagePreview');
+                        if (imagePath) {
+                            imagePreview.innerHTML = `<img src="${imagePath}" class="img-fluid" style="max-height: 150px;">`;
+                        } else {
+                            imagePreview.innerHTML = '<p>No image available</p>';
+                        }
                     });
 
                     document.getElementById('orderDetailsModal').addEventListener('show.bs.modal', function(event) {

@@ -17,11 +17,11 @@ function getFishTypeById($id)
     return $stmt->fetch();
 }
 
-function updateFishType($id, $name, $description, $price)
+function updateFishType($id, $name, $description, $price, $image_paths)
 {
     global $pdo;
-    $stmt = $pdo->prepare("UPDATE fish_types SET name = ?, description = ?, price_per_kg = ? WHERE id = ?");
-    return $stmt->execute([$name, $description, $price, $id]);
+    $stmt = $pdo->prepare("UPDATE fish_types SET name = ?, description = ?, image_path = ?, price_per_kg = ? WHERE id = ?");
+    return $stmt->execute([$name, $description, $image_paths, $price, $id]);
 }
 
 // Inventory functions
