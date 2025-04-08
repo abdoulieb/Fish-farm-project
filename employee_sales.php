@@ -359,7 +359,8 @@ include 'navbar.php';
                 <?php if (isset($_SESSION['error'])): ?>
                     <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
                     <?php unset($_SESSION['error']); ?>
-                <?php endif; ?>
+                // Ensure this `endif` corresponds to an open `if` block. If not, remove it or adjust the logic.
+                                <?php endif; ?>
 
                 <?php if (isset($_SESSION['message'])): ?>
                     <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
@@ -567,6 +568,7 @@ include 'navbar.php';
                 <?php endif; ?>
             </div>
             <!-- Daily Report Tab -->
+            <!-- Replace the Daily Report Tab content with this: -->
             <div class="tab-pane fade" id="daily-report" role="tabpanel">
                 <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
 
@@ -579,6 +581,24 @@ include 'navbar.php';
                     <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
                     <?php unset($_SESSION['message']); ?>
                 <?php endif; ?>
+
+                <!-- Handle sale cancellation -->
+                <?php if (isset($_GET['cancel_sale'])): ?>
+                    <?php
+                    $saleId = intval($_GET['cancel_sale']);
+                    if (cancelSale($saleId, isAdmin() ? null : $_SESSION['user_id'])) {
+                        $_SESSION['message'] = "Sale #$saleId has been cancelled and inventory restored.";
+                        header("Location: employee_sales.php#daily-report");
+                        exit();
+                    } else {
+                        $_SESSION['error'] = "Failed to cancel sale #$saleId";
+                        header("Location: employee_sales.php");
+                        exit();
+                    }
+                    ?>
+                <?php endif; ?>
+
+
 
                 <div class="row mt-3">
                     <div class="col-md-8">
@@ -594,10 +614,20 @@ include 'navbar.php';
                                         <th>Time</th>
                                         <th>Payment Method</th>
                                         <th>Amount (D)</th>
+                                        <th>Kg Sold</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($todaySales as $sale): ?>
+                                    <?php
+                                    $totalKgSold = 0;
+                                    foreach ($todaySales as $sale):
+                                        // Get kg sold for this sale
+                                        $stmt = $pdo->prepare("SELECT SUM(quantity_kg) as total_kg FROM sale_items WHERE sale_id = ?");
+                                        $stmt->execute([$sale['id']]);
+                                        $kgSold = $stmt->fetch()['total_kg'] ?? 0;
+                                        $totalKgSold += $kgSold;
+                                    ?>
                                         <tr>
                                             <td>#<?= $sale['id'] ?></td>
                                             <?php if (isAdmin()): ?>
@@ -606,15 +636,24 @@ include 'navbar.php';
                                             <td><?= date('H:i', strtotime($sale['sale_date'])) ?></td>
                                             <td>
                                                 <span class="payment-method-badge 
-                                                    <?= $sale['payment_method'] === 'cash' ? 'cash-badge' : ($sale['payment_method'] === 'credit' ? 'credit-badge' : 'mobile-badge') ?>">
+                                        <?= $sale['payment_method'] === 'cash' ? 'cash-badge' : ($sale['payment_method'] === 'credit' ? 'credit-badge' : 'mobile-badge') ?>">
                                                     <?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?>
                                                 </span>
                                             </td>
                                             <td><?= number_format($sale['total_amount'], 2) ?></td>
+                                            <td><?= number_format($kgSold, 2) ?></td>
+                                            <td>
+                                                <a href="employee_sales.php?cancel_sale=<?= $sale['id'] ?>#daily-report"
+                                                    class="btn btn-sm btn-danger"
+                                                    onclick="return confirm('Are you sure you want to cancel this sale? Inventory will be restored.')">
+                                                    Cancel
+                                                </a>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                     <tr class="table-primary">
-                                        <td colspan="<?= isAdmin() ? 4 : 3 ?>" class="text-end"><strong>Total All Sales:</strong></td>
+                                        <td colspan="<?= isAdmin() ? 5 : 4 ?>" class="text-end"><strong>Total All Sales:</strong></td>
+                                        <td class="fw-bold"><?= number_format($totalKgSold, 2) ?> kg</td>
                                         <td class="fw-bold">D<?= number_format($totalExpected, 2) ?></td>
                                     </tr>
                                 </tbody>
@@ -665,6 +704,10 @@ include 'navbar.php';
                                 <tr>
                                     <th>Total Sales:</th>
                                     <td>D<?= number_format($totalExpected, 2) ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Kg Sold:</th>
+                                    <td><?= number_format($totalKgSold, 2) ?> kg</td>
                                 </tr>
                                 <tr>
                                     <th>Cash Sales:</th>

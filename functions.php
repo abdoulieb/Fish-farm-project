@@ -157,3 +157,64 @@ function cancelOrderByUser($orderId, $userId = null)
         return false;
     }
 }
+// Add this to functions.php
+function cancelSale($saleId, $employeeId = null)
+{
+    global $pdo;
+
+    try {
+        $pdo->beginTransaction();
+
+        // Verify the sale exists and belongs to the employee (if specified)
+        $sql = "SELECT * FROM sales WHERE id = ?";
+        $params = [$saleId];
+
+        if ($employeeId) {
+            $sql .= " AND employee_id = ?";
+            $params[] = $employeeId;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $sale = $stmt->fetch();
+
+        if (!$sale) {
+            throw new Exception("Sale not found or not authorized to cancel.");
+        }
+
+        // Get sale items to restore inventory
+        $stmt = $pdo->prepare("SELECT * FROM sale_items WHERE sale_id = ?");
+        $stmt->execute([$saleId]);
+        $items = $stmt->fetchAll();
+
+        // Restore inventory
+        foreach ($items as $item) {
+            // Update main inventory
+            $stmt = $pdo->prepare("UPDATE inventory SET quantity_kg = quantity_kg + ? WHERE fish_type_id = ?");
+            $stmt->execute([$item['quantity_kg'], $item['fish_type_id']]);
+
+            // Update employee's assigned inventory if not admin
+            if ($employeeId) {
+                $stmt = $pdo->prepare("
+                    UPDATE location_inventory SET quantity = quantity + ? 
+                    WHERE employee_id = ? AND fish_type_id = ?
+                ");
+                $stmt->execute([$item['quantity_kg'], $employeeId, $item['fish_type_id']]);
+            }
+        }
+
+        // Delete sale items
+        $stmt = $pdo->prepare("DELETE FROM sale_items WHERE sale_id = ?");
+        $stmt->execute([$saleId]);
+
+        // Delete sale
+        $stmt = $pdo->prepare("DELETE FROM sales WHERE id = ?");
+        $stmt->execute([$saleId]);
+
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return false;
+    }
+}
