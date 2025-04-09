@@ -290,17 +290,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_reconciliation
         header("Location: employee_sales.php");
         exit();
     }
-    
+
     $reportId = intval($_POST['report_id']);
     $physicalCash = floatval($_POST['physical_cash']);
     $pettyCash = floatval($_POST['petty_cash']);
-    
+
     if (updateReconciliation($reportId, $physicalCash, $pettyCash)) {
         $_SESSION['message'] = "Reconciliation updated successfully!";
     } else {
         $_SESSION['error'] = "Failed to update reconciliation.";
     }
-    
+
     header("Location: employee_sales.php");
     exit();
 }
@@ -501,12 +501,12 @@ include 'navbar.php';
                                     </div>
 
                                     <div class="mt-4">
-                                <label for="money_given" class="form-label">Money Given by Customer (D)</label>
+                                        <label for="money_given" class="form-label">Money Given by Customer (D)</label>
                                         <input type="number" step="0.01" min="0" class="form-control" id="money_given" name="money_given" required>
-                                    <div class="mt-2">
-                                         <span id="changeDisplay" class="badge" style="font-size: 1.2rem; font-weight: bold; background-color: rgba(0, 0, 0, 0.8); color: white;">Change: D0.00</span>
+                                        <div class="mt-2">
+                                            <span id="changeDisplay" class="badge" style="font-size: 1.2rem; font-weight: bold; background-color: rgba(0, 0, 0, 0.8); color: white;">Change: D0.00</span>
                                         </div>
-                                        </div>
+                                    </div>
                                     <div class="mt-4">
                                         <button type="submit" class="btn btn-primary">Complete Sale</button>
                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -609,492 +609,492 @@ include 'navbar.php';
                 <?php endif; ?>
             </div>
             <!-- Replace the Daily Report Tab content with this: -->
-<div class="tab-pane fade" id="daily-report" role="tabpanel">
-    <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
+            <div class="tab-pane fade" id="daily-report" role="tabpanel">
+                <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
 
-    <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
-        <?php unset($_SESSION['error']); ?>
-    <?php endif; ?>
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
+                    <?php unset($_SESSION['error']); ?>
+                <?php endif; ?>
 
-    <?php if (isset($_SESSION['message'])): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
-        <?php unset($_SESSION['message']); ?>
-    <?php endif; ?>
+                <?php if (isset($_SESSION['message'])): ?>
+                    <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
+                    <?php unset($_SESSION['message']); ?>
+                <?php endif; ?>
 
-    <div class="row mt-3">
-        <div class="col-md-8">
-            <div class="summary-card">
-                <h5>Today's Sales</h5>
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Sale ID</th>
-                            <?php if (isAdmin()): ?>
-                                <th>Employee</th>
-                            <?php endif; ?>
-                            <th>Time</th>
-                            <th>Payment Method</th>
-                            <th>Amount (D)</th>
-                            <th>Kg Sold</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
-                        $totalKgSold = 0;
-                        foreach ($todaySales as $sale): 
-                            // Get kg sold for this sale
-                            $stmt = $pdo->prepare("SELECT SUM(quantity_kg) as total_kg FROM sale_items WHERE sale_id = ?");
-                            $stmt->execute([$sale['id']]);
-                            $kg = $stmt->fetch()['total_kg'] ?? 0;
-                            $totalKgSold += $kg;
-                        ?>
-                            <tr>
-                                <td>#<?= $sale['id'] ?></td>
-                                <?php if (isAdmin()): ?>
-                                    <td><?= htmlspecialchars($sale['employee_name'] ?? 'Admin') ?></td>
-                                <?php endif; ?>
-                                <td><?= date('H:i', strtotime($sale['sale_date'])) ?></td>
-                                <td>
-                                    <span class="payment-method-badge 
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <div class="summary-card">
+                            <h5>Today's Sales</h5>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Sale ID</th>
+                                        <?php if (isAdmin()): ?>
+                                            <th>Employee</th>
+                                        <?php endif; ?>
+                                        <th>Time</th>
+                                        <th>Payment Method</th>
+                                        <th>Amount (D)</th>
+                                        <th>Kg Sold</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $totalKgSold = 0;
+                                    foreach ($todaySales as $sale):
+                                        // Get kg sold for this sale
+                                        $stmt = $pdo->prepare("SELECT SUM(quantity_kg) as total_kg FROM sale_items WHERE sale_id = ?");
+                                        $stmt->execute([$sale['id']]);
+                                        $kg = $stmt->fetch()['total_kg'] ?? 0;
+                                        $totalKgSold += $kg;
+                                    ?>
+                                        <tr>
+                                            <td>#<?= $sale['id'] ?></td>
+                                            <?php if (isAdmin()): ?>
+                                                <td><?= htmlspecialchars($sale['employee_name'] ?? 'Admin') ?></td>
+                                            <?php endif; ?>
+                                            <td><?= date('H:i', strtotime($sale['sale_date'])) ?></td>
+                                            <td>
+                                                <span class="payment-method-badge 
                                         <?= $sale['payment_method'] === 'cash' ? 'cash-badge' : ($sale['payment_method'] === 'credit' ? 'credit-badge' : 'mobile-badge') ?>">
-                                        <?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?>
-                                    </span>
-                                </td>
-                                <td><?= number_format($sale['total_amount'], 2) ?></td>
-                                <td><?= number_format($kg, 2) ?></td>
-                                <td>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="sale_id" value="<?= $sale['id'] ?>">
-                                        <button type="submit" name="cancel_sale" class="btn btn-sm btn-danger" 
-                                            onclick="return confirm('Are you sure you want to cancel this sale?')">
-                                            Cancel
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <tr class="table-primary">
-                            <td colspan="<?= isAdmin() ? 4 : 3 ?>" class="text-end"><strong>Total All Sales:</strong></td>
-                            <td class="fw-bold">D<?= number_format($totalExpected, 2) ?></td>
-                            <td class="fw-bold"><?= number_format($totalKgSold, 2) ?> kg</td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <?php if ($totalCashSales > 0 && !isAdmin() && !$hasSubmittedToday): ?>
-                <form method="POST">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h5>Cash Reconciliation</h5>
+                                                    <?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?>
+                                                </span>
+                                            </td>
+                                            <td><?= number_format($sale['total_amount'], 2) ?></td>
+                                            <td><?= number_format($kg, 2) ?></td>
+                                            <td>
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="sale_id" value="<?= $sale['id'] ?>">
+                                                    <button type="submit" name="cancel_sale" class="btn btn-sm btn-danger"
+                                                        onclick="return confirm('Are you sure you want to cancel this sale?')">
+                                                        Cancel
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr class="table-primary">
+                                        <td colspan="<?= isAdmin() ? 4 : 3 ?>" class="text-end"><strong>Total All Sales:</strong></td>
+                                        <td class="fw-bold">D<?= number_format($totalExpected, 2) ?></td>
+                                        <td class="fw-bold"><?= number_format($totalKgSold, 2) ?> kg</td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Physical Cash Count (D)</label>
-                                    <input type="number" step="0.01" class="form-control" name="physical_cash" required>
+
+                        <?php if ($totalCashSales > 0 && !isAdmin() && !$hasSubmittedToday): ?>
+                            <form method="POST">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5>Cash Reconciliation</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Physical Cash Count (D)</label>
+                                                <input type="number" step="0.01" class="form-control" name="physical_cash" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Petty Cash (D)</label>
+                                                <input type="number" step="0.01" class="form-control" name="petty_cash" value="0">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Expected Cash:</strong> D<?= number_format($totalCashSales, 2) ?></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Deficit/Surplus:</strong> D<span id="deficitDisplay">0.00</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Petty Cash (D)</label>
-                                    <input type="number" step="0.01" class="form-control" name="petty_cash" value="0">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p><strong>Expected Cash:</strong> D<?= number_format($totalCashSales, 2) ?></p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p><strong>Deficit/Surplus:</strong> D<span id="deficitDisplay">0.00</span></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <button type="submit" name="submit_daily_report" class="btn btn-primary">Submit Daily Report</button>
-                </form>
-            <?php elseif ($hasSubmittedToday): ?>
-                <div class="alert alert-info">You have already submitted your reconciliation report for today.</div>
-            <?php elseif (isAdmin()): ?>
-                <div class="alert alert-info">Admins can view but not submit cash reconciliations.</div>
-            <?php else: ?>
-                <div class="alert alert-info">No cash sales today. Reconciliation not needed.</div>
-            <?php endif; ?>
-        </div>
-
-        <div class="col-md-4">
-            <div class="summary-card bg-light">
-                <h5>Today's Summary</h5>
-                <table class="table">
-                    <tr>
-                        <th>Total Sales:</th>
-                        <td>D<?= number_format($totalExpected, 2) ?></td>
-                    </tr>
-                    <tr>
-                        <th>Total Kg Sold:</th>
-                        <td><?= number_format($totalKgSold, 2) ?> kg</td>
-                    </tr>
-                    <tr>
-                        <th>Cash Sales:</th>
-                        <td>D<?= number_format($totalCashSales, 2) ?></td>
-                    </tr>
-                    <tr>
-                        <th>Credit Sales:</th>
-                        <td>D<?= number_format($totalCreditSales, 2) ?></td>
-                    </tr>
-                    <tr>
-                        <th>Mobile Money:</th>
-                        <td>D<?= number_format($totalMobileMoneySales, 2) ?></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-            <!-- Update the Reconciliation Reports Tab content with this: -->
-<div class="tab-pane fade" id="reconciliation" role="tabpanel">
-    <h4><?= isAdmin() ? 'All' : 'My' ?> Cash Reconciliation Reports</h4>
-
-    <?php if (isAdmin()): ?>
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5>Filter Reports</h5>
-            </div>
-            <div class="card-body">
-                <form id="reconciliationFilter">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <label class="form-label">Employee</label>
-                            <select class="form-select" name="employee_filter">
-                                <option value="">All Employees</option>
-                                <?php
-                                $employees = $pdo->query("SELECT id, username FROM users WHERE role = 'employee'")->fetchAll();
-                                foreach ($employees as $emp): ?>
-                                    <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['username']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Date From</label>
-                            <input type="date" class="form-control" name="date_from">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Date To</label>
-                            <input type="date" class="form-control" name="date_to">
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary">Apply Filters</button>
-                        <button type="reset" class="btn btn-outline-secondary">Reset</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <?php if (empty($allReconciliations)): ?>
-        <div class="alert alert-info">No reconciliation reports found.</div>
-    <?php else: ?>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <?php if (isAdmin()): ?>
-                            <th>Employee</th>
+                                <button type="submit" name="submit_daily_report" class="btn btn-primary">Submit Daily Report</button>
+                            </form>
+                        <?php elseif ($hasSubmittedToday): ?>
+                            <div class="alert alert-info">You have already submitted your reconciliation report for today.</div>
+                        <?php elseif (isAdmin()): ?>
+                            <div class="alert alert-info">Admins can view but not submit cash reconciliations.</div>
+                        <?php else: ?>
+                            <div class="alert alert-info">No cash sales today. Reconciliation not needed.</div>
                         <?php endif; ?>
-                        <th>Date</th>
-                        <th>Expected (D)</th>
-                        <th>Physical Cash (D)</th>
-                        <th>Petty Cash (D)</th>
-                        <th>Total Cash (D)</th>
-                        <th>Deficit/Surplus (D)</th>
-                        <th>Status</th>
-                        <?php if (isAdmin()): ?>
-                            <th>Actions</th>
-                        <?php endif; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($allReconciliations as $report):
-                        $deficit = $report['deficit'];
-                        $isProblem = $deficit < 0;
-                    ?>
-                        <tr>
-                            <?php if (isAdmin()): ?>
-                                <td><?= htmlspecialchars($report['employee_name']) ?></td>
-                            <?php endif; ?>
-                            <td><?= date('M d, Y', strtotime($report['report_date'])) ?></td>
-                            <td><?= number_format($report['expected_amount'], 2) ?></td>
-                            <td><?= number_format($report['physical_cash'], 2) ?></td>
-                            <td><?= number_format($report['petty_cash'], 2) ?></td>
-                            <td><?= number_format($report['total_cash'], 2) ?></td>
-                            <td class="<?= $isProblem ? 'text-danger fw-bold' : 'text-success' ?>">
-                                <?= number_format($deficit, 2) ?>
-                            </td>
-                            <td>
-                                <?php if ($isProblem): ?>
-                                    <span class="badge bg-danger">Discrepancy</span>
-                                <?php else: ?>
-                                    <span class="badge bg-success">Balanced</span>
-                                <?php endif; ?>
-                            </td>
-                            <?php if (isAdmin()): ?>
-                                <td>
-                                    <button class="btn btn-sm btn-primary edit-reconciliation" 
-                                        data-id="<?= $report['id'] ?>"
-                                        data-physical="<?= $report['physical_cash'] ?>"
-                                        data-petty="<?= $report['petty_cash'] ?>">
-                                        Edit
-                                    </button>
-                                </td>
-                            <?php endif; ?>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-
-    <!-- Edit Reconciliation Modal (for admin) -->
-    <?php if (isAdmin()): ?>
-        <div class="modal fade" id="editReconciliationModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit Reconciliation Report</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <form method="POST" id="editReconciliationForm">
-                        <div class="modal-body">
-                            <input type="hidden" name="report_id" id="report_id">
-                            <div class="mb-3">
-                                <label class="form-label">Physical Cash (D)</label>
-                                <input type="number" step="0.01" class="form-control" name="physical_cash" id="edit_physical_cash" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Petty Cash (D)</label>
-                                <input type="number" step="0.01" class="form-control" name="petty_cash" id="edit_petty_cash" required>
-                            </div>
-                            <div class="alert alert-info">
-                                Expected Cash: D<span id="edit_expected_amount">0.00</span>
-                            </div>
+
+                    <div class="col-md-4">
+                        <div class="summary-card bg-light">
+                            <h5>Today's Summary</h5>
+                            <table class="table">
+                                <tr>
+                                    <th>Total Sales:</th>
+                                    <td>D<?= number_format($totalExpected, 2) ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Kg Sold:</th>
+                                    <td><?= number_format($totalKgSold, 2) ?> kg</td>
+                                </tr>
+                                <tr>
+                                    <th>Cash Sales:</th>
+                                    <td>D<?= number_format($totalCashSales, 2) ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Credit Sales:</th>
+                                    <td>D<?= number_format($totalCreditSales, 2) ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Mobile Money:</th>
+                                    <td>D<?= number_format($totalMobileMoneySales, 2) ?></td>
+                                </tr>
+                            </table>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" name="update_reconciliation" class="btn btn-primary">Save Changes</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <script>
-            // Add this to your existing JavaScript
-            document.addEventListener('DOMContentLoaded', function() {
-                // Edit reconciliation modal
-                const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
-                
-                document.querySelectorAll('.edit-reconciliation').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const reportId = this.dataset.id;
-                        const physicalCash = this.dataset.physical;
-                        const pettyCash = this.dataset.petty;
-                        
-                        // Find the row to get expected amount
-                        const row = this.closest('tr');
-                        const expectedAmount = row.querySelector('td:nth-child(3)').textContent.replace(/[^0-9.]/g, '');
-                        
-                        // Set form values
-                        document.getElementById('report_id').value = reportId;
-                        document.getElementById('edit_physical_cash').value = physicalCash;
-                        document.getElementById('edit_petty_cash').value = pettyCash;
-                        document.getElementById('edit_expected_amount').textContent = expectedAmount;
-                        
-                        editModal.show();
+            <!-- Update the Reconciliation Reports Tab content with this: -->
+            <div class="tab-pane fade" id="reconciliation" role="tabpanel">
+                <h4><?= isAdmin() ? 'All' : 'My' ?> Cash Reconciliation Reports</h4>
+
+                <?php if (isAdmin()): ?>
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Filter Reports</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="reconciliationFilter">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Employee</label>
+                                        <select class="form-select" name="employee_filter">
+                                            <option value="">All Employees</option>
+                                            <?php
+                                            $employees = $pdo->query("SELECT id, username FROM users WHERE role = 'employee'")->fetchAll();
+                                            foreach ($employees as $emp): ?>
+                                                <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['username']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Date From</label>
+                                        <input type="date" class="form-control" name="date_from">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Date To</label>
+                                        <input type="date" class="form-control" name="date_to">
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                                    <button type="reset" class="btn btn-outline-secondary">Reset</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (empty($allReconciliations)): ?>
+                    <div class="alert alert-info">No reconciliation reports found.</div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <?php if (isAdmin()): ?>
+                                        <th>Employee</th>
+                                    <?php endif; ?>
+                                    <th>Date</th>
+                                    <th>Expected (D)</th>
+                                    <th>Physical Cash (D)</th>
+                                    <th>Petty Cash (D)</th>
+                                    <th>Total Cash (D)</th>
+                                    <th>Deficit/Surplus (D)</th>
+                                    <th>Status</th>
+                                    <?php if (isAdmin()): ?>
+                                        <th>Actions</th>
+                                    <?php endif; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($allReconciliations as $report):
+                                    $deficit = $report['deficit'];
+                                    $isProblem = $deficit < 0;
+                                ?>
+                                    <tr>
+                                        <?php if (isAdmin()): ?>
+                                            <td><?= htmlspecialchars($report['employee_name']) ?></td>
+                                        <?php endif; ?>
+                                        <td><?= date('M d, Y', strtotime($report['report_date'])) ?></td>
+                                        <td><?= number_format($report['expected_amount'], 2) ?></td>
+                                        <td><?= number_format($report['physical_cash'], 2) ?></td>
+                                        <td><?= number_format($report['petty_cash'], 2) ?></td>
+                                        <td><?= number_format($report['total_cash'], 2) ?></td>
+                                        <td class="<?= $isProblem ? 'text-danger fw-bold' : 'text-success' ?>">
+                                            <?= number_format($deficit, 2) ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($isProblem): ?>
+                                                <span class="badge bg-danger">Discrepancy</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-success">Balanced</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php if (isAdmin()): ?>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary edit-reconciliation"
+                                                    data-id="<?= $report['id'] ?>"
+                                                    data-physical="<?= $report['physical_cash'] ?>"
+                                                    data-petty="<?= $report['petty_cash'] ?>">
+                                                    Edit
+                                                </button>
+                                            </td>
+                                        <?php endif; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Edit Reconciliation Modal (for admin) -->
+                <?php if (isAdmin()): ?>
+                    <div class="modal fade" id="editReconciliationModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Edit Reconciliation Report</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form method="POST" id="editReconciliationForm">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="report_id" id="report_id">
+                                        <div class="mb-3">
+                                            <label class="form-label">Physical Cash (D)</label>
+                                            <input type="number" step="0.01" class="form-control" name="physical_cash" id="edit_physical_cash" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Petty Cash (D)</label>
+                                            <input type="number" step="0.01" class="form-control" name="petty_cash" id="edit_petty_cash" required>
+                                        </div>
+                                        <div class="alert alert-info">
+                                            Expected Cash: D<span id="edit_expected_amount">0.00</span>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" name="update_reconciliation" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        // Add this to your existing JavaScript
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Edit reconciliation modal
+                            const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
+
+                            document.querySelectorAll('.edit-reconciliation').forEach(button => {
+                                button.addEventListener('click', function() {
+                                    const reportId = this.dataset.id;
+                                    const physicalCash = this.dataset.physical;
+                                    const pettyCash = this.dataset.petty;
+
+                                    // Find the row to get expected amount
+                                    const row = this.closest('tr');
+                                    const expectedAmount = row.querySelector('td:nth-child(3)').textContent.replace(/[^0-9.]/g, '');
+
+                                    // Set form values
+                                    document.getElementById('report_id').value = reportId;
+                                    document.getElementById('edit_physical_cash').value = physicalCash;
+                                    document.getElementById('edit_petty_cash').value = pettyCash;
+                                    document.getElementById('edit_expected_amount').textContent = expectedAmount;
+
+                                    editModal.show();
+                                });
+                            });
+                        });
+                    </script>
+                <?php endif; ?>
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Add new item row
+                    document.getElementById('addItem').addEventListener('click', function() {
+                        const newItem = document.querySelector('.fish-item').cloneNode(true);
+                        newItem.querySelector('.quantity').value = '';
+                        newItem.querySelector('.price').value = '';
+                        newItem.querySelector('.available-text').textContent = 'Available: 0 kg';
+                        document.getElementById('itemsContainer').appendChild(newItem);
+                        updateRemoveButtons();
                     });
-                });
-            });
-        </script>
-    <?php endif; ?>
-</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add new item row
-            document.getElementById('addItem').addEventListener('click', function() {
-                const newItem = document.querySelector('.fish-item').cloneNode(true);
-                newItem.querySelector('.quantity').value = '';
-                newItem.querySelector('.price').value = '';
-                newItem.querySelector('.available-text').textContent = 'Available: 0 kg';
-                document.getElementById('itemsContainer').appendChild(newItem);
-                updateRemoveButtons();
-            });
+                    // Update remove buttons
+                    function updateRemoveButtons() {
+                        document.querySelectorAll('.remove-item').forEach(button => {
+                            button.addEventListener('click', function() {
+                                if (document.querySelectorAll('.fish-item').length > 1) {
+                                    this.closest('.fish-item').remove();
+                                    calculateTotal();
+                                }
+                            });
+                        });
+                    }
 
-            // Update remove buttons
-            function updateRemoveButtons() {
-                document.querySelectorAll('.remove-item').forEach(button => {
-                    button.addEventListener('click', function() {
-                        if (document.querySelectorAll('.fish-item').length > 1) {
-                            this.closest('.fish-item').remove();
+                    // Update price and available quantity when fish type changes
+                    document.addEventListener('change', function(e) {
+                        if (e.target.classList.contains('fish-type')) {
+                            const selectedOption = e.target.options[e.target.selectedIndex];
+                            const price = selectedOption.dataset.price || '0';
+                            const available = selectedOption.dataset.available || '0';
+
+                            const itemRow = e.target.closest('.fish-item');
+                            itemRow.querySelector('.price').value = price;
+                            itemRow.querySelector('.available-text').textContent = `Available: ${available} kg`;
+                            itemRow.querySelector('.quantity').max = available;
+
                             calculateTotal();
                         }
                     });
+
+                    // Calculate total when quantity changes
+                    document.addEventListener('input', function(e) {
+                        if (e.target.classList.contains('quantity')) {
+                            calculateTotal();
+                        }
+                    });
+
+                    // Calculate total amount
+                    function calculateTotal() {
+                        let total = 0;
+                        document.querySelectorAll('.fish-item').forEach(item => {
+                            const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
+                            const price = parseFloat(item.querySelector('.price').value) || 0;
+                            total += quantity * price;
+                        });
+                        document.getElementById('totalAmount').textContent = total.toFixed(2);
+                    }
+
+                    // Daily report calculations
+                    const physicalCashInput = document.querySelector('input[name="physical_cash"]');
+                    if (physicalCashInput) {
+                        physicalCashInput.addEventListener('input', updateDailyCalculations);
+                        document.querySelector('input[name="petty_cash"]').addEventListener('input', updateDailyCalculations);
+
+                        function updateDailyCalculations() {
+                            const physicalCash = parseFloat(physicalCashInput.value) || 0;
+                            const pettyCash = parseFloat(document.querySelector('input[name="petty_cash"]').value) || 0;
+                            const cashSalesAmount = <?= $totalCashSales ?>;
+
+                            const deficit = cashSalesAmount - physicalCash;
+                            document.getElementById('deficitDisplay').textContent = deficit.toFixed(2);
+                        }
+                    }
+
+                    // Filter functionality for reconciliation reports
+                    const filterForm = document.getElementById('reconciliationFilter');
+                    if (filterForm) {
+                        filterForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            // In a real implementation, you would fetch filtered data via AJAX
+                            // For this example, we'll just show an alert
+                            alert('Filter functionality would be implemented here with AJAX');
+                        });
+                    }
+
+                    updateRemoveButtons();
+
+                    // Tab functionality
+                    const triggerTabList = [].slice.call(document.querySelectorAll('#employeeTabs button'));
+                    triggerTabList.forEach(function(triggerEl) {
+                        const tabTrigger = new bootstrap.Tab(triggerEl);
+                        triggerEl.addEventListener('click', function(event) {
+                            event.preventDefault();
+                            tabTrigger.show();
+                        });
+                    });
                 });
-            }
-
-            // Update price and available quantity when fish type changes
-            document.addEventListener('change', function(e) {
-                if (e.target.classList.contains('fish-type')) {
-                    const selectedOption = e.target.options[e.target.selectedIndex];
-                    const price = selectedOption.dataset.price || '0';
-                    const available = selectedOption.dataset.available || '0';
-
-                    const itemRow = e.target.closest('.fish-item');
-                    itemRow.querySelector('.price').value = price;
-                    itemRow.querySelector('.available-text').textContent = `Available: ${available} kg`;
-                    itemRow.querySelector('.quantity').max = available;
-
-                    calculateTotal();
+                // Add this to your existing JavaScript section
+                document.getElementById('employeeFilter')?.addEventListener('change', function() {
+                    const employeeId = this.value;
+                    if (employeeId) {
+                        window.location.href = `employee_sales.php?employee_id=${employeeId}`;
+                    } else {
+                        window.location.href = 'employee_sales.php';
+                    }
+                });
+                // Update the calculateTotal function to also update the change display
+                function calculateTotal() {
+                    let total = 0;
+                    document.querySelectorAll('.fish-item').forEach(item => {
+                        const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
+                        const price = parseFloat(item.querySelector('.price').value) || 0;
+                        total += quantity * price;
+                    });
+                    document.getElementById('totalAmount').textContent = total.toFixed(2);
+                    updateChangeDisplay(); // Add this line to update the change display
                 }
-            });
+                // Update the existing change display calculation
+                function updateChangeDisplay() {
+                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                    const change = moneyGiven - totalAmount;
+                    const absChange = Math.abs(change);
 
-            // Calculate total when quantity changes
-            document.addEventListener('input', function(e) {
-                if (e.target.classList.contains('quantity')) {
-                    calculateTotal();
+                    if (change < 0) {
+                        changeDisplay.textContent = `Short: D${absChange.toFixed(2)}`;
+                        changeDisplay.className = 'badge bg-danger';
+                    } else if (change === 0) {
+                        changeDisplay.textContent = `Exact Amount`;
+                        changeDisplay.className = 'badge bg-success';
+                    } else {
+                        changeDisplay.textContent = `Change: D${absChange.toFixed(2)}`;
+                        changeDisplay.className = 'badge bg-success';
+                    }
                 }
-            });
 
-            // Calculate total amount
-            function calculateTotal() {
-                let total = 0;
-                document.querySelectorAll('.fish-item').forEach(item => {
-                    const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
-                    const price = parseFloat(item.querySelector('.price').value) || 0;
-                    total += quantity * price;
+                // Call this whenever money given or total changes
+                document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
+                // Replace the existing sales form submission handler with this:
+                document.getElementById('salesForm').addEventListener('submit', function(e) {
+                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                    const change = moneyGiven - totalAmount;
+
+                    // If change is not exactly 0, show confirmation
+                    if (change !== 0) {
+                        e.preventDefault(); // Prevent form submission
+
+                        // Format the amounts for display
+                        const formattedTotal = totalAmount.toFixed(2);
+                        const formattedGiven = moneyGiven.toFixed(2);
+                        const formattedChange = Math.abs(change).toFixed(2);
+
+                        // Determine change direction
+                        const changeDirection = change < 0 ? 'short by' : 'give change of';
+
+                        // Show confirmation dialog
+                        const confirmed = confirm(
+                            `Transaction Details:\n\n` +
+                            `Total: D${formattedTotal}\n` +
+                            `Money Given: D${formattedGiven}\n` +
+                            `You need to ${changeDirection} D${formattedChange}\n\n` +
+                            `Do you want to complete this transaction?`
+                        );
+
+                        // If confirmed, submit the form
+                        if (confirmed) {
+                            this.submit();
+                        }
+                    }
+                    // If change is exactly 0, form will submit normally without confirmation
                 });
-                document.getElementById('totalAmount').textContent = total.toFixed(2);
-            }
-
-            // Daily report calculations
-            const physicalCashInput = document.querySelector('input[name="physical_cash"]');
-            if (physicalCashInput) {
-                physicalCashInput.addEventListener('input', updateDailyCalculations);
-                document.querySelector('input[name="petty_cash"]').addEventListener('input', updateDailyCalculations);
-
-                function updateDailyCalculations() {
-                    const physicalCash = parseFloat(physicalCashInput.value) || 0;
-                    const pettyCash = parseFloat(document.querySelector('input[name="petty_cash"]').value) || 0;
-                    const cashSalesAmount = <?= $totalCashSales ?>;
-
-                    const deficit = cashSalesAmount - physicalCash;
-                    document.getElementById('deficitDisplay').textContent = deficit.toFixed(2);
-                }
-            }
-
-            // Filter functionality for reconciliation reports
-            const filterForm = document.getElementById('reconciliationFilter');
-            if (filterForm) {
-                filterForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    // In a real implementation, you would fetch filtered data via AJAX
-                    // For this example, we'll just show an alert
-                    alert('Filter functionality would be implemented here with AJAX');
-                });
-            }
-
-            updateRemoveButtons();
-
-            // Tab functionality
-            const triggerTabList = [].slice.call(document.querySelectorAll('#employeeTabs button'));
-            triggerTabList.forEach(function(triggerEl) {
-                const tabTrigger = new bootstrap.Tab(triggerEl);
-                triggerEl.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    tabTrigger.show();
-                });
-            });
-        });
-        // Add this to your existing JavaScript section
-        document.getElementById('employeeFilter')?.addEventListener('change', function() {
-            const employeeId = this.value;
-            if (employeeId) {
-                window.location.href = `employee_sales.php?employee_id=${employeeId}`;
-            } else {
-                window.location.href = 'employee_sales.php';
-            }
-        });
-        // Update the calculateTotal function to also update the change display
-function calculateTotal() {
-    let total = 0;
-    document.querySelectorAll('.fish-item').forEach(item => {
-        const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
-        const price = parseFloat(item.querySelector('.price').value) || 0;
-        total += quantity * price;
-    });
-    document.getElementById('totalAmount').textContent = total.toFixed(2);
-    updateChangeDisplay(); // Add this line to update the change display
-}
-// Update the existing change display calculation
-function updateChangeDisplay() {
-    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
-    const change = moneyGiven - totalAmount;
-    const absChange = Math.abs(change);
-    
-    if (change < 0) {
-        changeDisplay.textContent = `Short: D${absChange.toFixed(2)}`;
-        changeDisplay.className = 'badge bg-danger';
-    } else if (change === 0) {
-        changeDisplay.textContent = `Exact Amount`;
-        changeDisplay.className = 'badge bg-success';
-    } else {
-        changeDisplay.textContent = `Change: D${absChange.toFixed(2)}`;
-        changeDisplay.className = 'badge bg-success';
-    }
-}
-
-// Call this whenever money given or total changes
-document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
-// Replace the existing sales form submission handler with this:
-    document.getElementById('salesForm').addEventListener('submit', function(e) {
-    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
-    const change = moneyGiven - totalAmount;
-    
-    // If change is not exactly 0, show confirmation
-    if (change !== 0) {
-        e.preventDefault(); // Prevent form submission
-        
-        // Format the amounts for display
-        const formattedTotal = totalAmount.toFixed(2);
-        const formattedGiven = moneyGiven.toFixed(2);
-        const formattedChange = Math.abs(change).toFixed(2);
-        
-        // Determine change direction
-        const changeDirection = change < 0 ? 'short by' : 'give change of';
-        
-        // Show confirmation dialog
-        const confirmed = confirm(
-            `Transaction Details:\n\n` +
-            `Total: D${formattedTotal}\n` +
-            `Money Given: D${formattedGiven}\n` +
-            `You need to ${changeDirection} D${formattedChange}\n\n` +
-            `Do you want to complete this transaction?`
-        );
-        
-        // If confirmed, submit the form
-        if (confirmed) {
-            this.submit();
-        }
-    }
-    // If change is exactly 0, form will submit normally without confirmation
-});
-    </script>
+            </script>
 </body>
 
 </html>
