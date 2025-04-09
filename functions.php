@@ -157,7 +157,7 @@ function cancelOrderByUser($orderId, $userId = null)
         return false;
     }
 }
-// Add this to functions.php
+
 function cancelSale($saleId, $employeeId = null)
 {
     global $pdo;
@@ -211,6 +211,45 @@ function cancelSale($saleId, $employeeId = null)
         $stmt = $pdo->prepare("DELETE FROM sales WHERE id = ?");
         $stmt->execute([$saleId]);
 
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return false;
+    }
+}
+// Add these functions to functions.php
+
+function getReconciliationById($id) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT * FROM cash_reconciliations WHERE id = ?");
+    $stmt->execute([$id]);
+    return $stmt->fetch();
+}
+
+function updateReconciliation($id, $physicalCash, $pettyCash) {
+    global $pdo;
+    
+    try {
+        $pdo->beginTransaction();
+        
+        // Get the original reconciliation to calculate the difference
+        $original = getReconciliationById($id);
+        if (!$original) {
+            throw new Exception("Reconciliation not found.");
+        }
+        
+        // Calculate new values
+        $deficit = $original['expected_amount'] - $physicalCash;
+        $totalCash = $physicalCash + $pettyCash;
+        
+        $stmt = $pdo->prepare("
+            UPDATE cash_reconciliations 
+            SET physical_cash = ?, petty_cash = ?, deficit = ?, total_cash = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$physicalCash, $pettyCash, $deficit, $totalCash, $id]);
+        
         $pdo->commit();
         return true;
     } catch (Exception $e) {

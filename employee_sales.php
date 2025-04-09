@@ -261,6 +261,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+// Add this near the top of employee_sales.php after the existing POST handling
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_sale'])) {
+    $saleId = intval($_POST['sale_id']);
+    if (cancelSale($saleId, $_SESSION['user_id'])) {
+        $_SESSION['message'] = "Sale #$saleId has been cancelled successfully";
+        header("Location: employee_sales.php");
+        exit();
+    } else {
+        $_SESSION['error'] = "Failed to cancel sale #$saleId";
+    }
+}
+
+// Add this to check if reconciliation was already submitted today
+$hasSubmittedToday = false;
+if (!isAdmin()) {
+    $checkSubmission = $pdo->prepare("
+        SELECT id FROM cash_reconciliations 
+        WHERE employee_id = ? AND DATE(report_date) = ?
+    ");
+    $checkSubmission->execute([$_SESSION['user_id'], $today]);
+    $hasSubmittedToday = (bool)$checkSubmission->fetch();
+}
+// Add this near the top of the file with other POST handling
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_reconciliation'])) {
+    if (!isAdmin()) {
+        $_SESSION['error'] = "Only admins can update reconciliations.";
+        header("Location: employee_sales.php");
+        exit();
+    }
+    
+    $reportId = intval($_POST['report_id']);
+    $physicalCash = floatval($_POST['physical_cash']);
+    $pettyCash = floatval($_POST['petty_cash']);
+    
+    if (updateReconciliation($reportId, $physicalCash, $pettyCash)) {
+        $_SESSION['message'] = "Reconciliation updated successfully!";
+    } else {
+        $_SESSION['error'] = "Failed to update reconciliation.";
+    }
+    
+    header("Location: employee_sales.php");
+    exit();
+}
 
 include 'navbar.php';
 ?>
@@ -359,8 +402,7 @@ include 'navbar.php';
                 <?php if (isset($_SESSION['error'])): ?>
                     <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
                     <?php unset($_SESSION['error']); ?>
-                // Ensure this `endif` corresponds to an open `if` block. If not, remove it or adjust the logic.
-                                <?php endif; ?>
+                <?php endif; ?>
 
                 <?php if (isset($_SESSION['message'])): ?>
                     <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
@@ -567,263 +609,318 @@ include 'navbar.php';
                     </div>
                 <?php endif; ?>
             </div>
-            <!-- Daily Report Tab -->
             <!-- Replace the Daily Report Tab content with this: -->
-            <div class="tab-pane fade" id="daily-report" role="tabpanel">
-                <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
+<div class="tab-pane fade" id="daily-report" role="tabpanel">
+    <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
 
-                <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
-                    <?php unset($_SESSION['error']); ?>
-                <?php endif; ?>
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
 
-                <?php if (isset($_SESSION['message'])): ?>
-                    <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
-                    <?php unset($_SESSION['message']); ?>
-                <?php endif; ?>
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($_SESSION['message']) ?></div>
+        <?php unset($_SESSION['message']); ?>
+    <?php endif; ?>
 
-                <!-- Handle sale cancellation -->
-                <?php if (isset($_GET['cancel_sale'])): ?>
-                    <?php
-                    $saleId = intval($_GET['cancel_sale']);
-                    if (cancelSale($saleId, isAdmin() ? null : $_SESSION['user_id'])) {
-                        $_SESSION['message'] = "Sale #$saleId has been cancelled and inventory restored.";
-                        header("Location: employee_sales.php#daily-report");
-                        exit();
-                    } else {
-                        $_SESSION['error'] = "Failed to cancel sale #$saleId";
-                        header("Location: employee_sales.php");
-                        exit();
-                    }
-                    ?>
-                <?php endif; ?>
-
-
-
-                <div class="row mt-3">
-                    <div class="col-md-8">
-                        <div class="summary-card">
-                            <h5>Today's Sales</h5>
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Sale ID</th>
-                                        <?php if (isAdmin()): ?>
-                                            <th>Employee</th>
-                                        <?php endif; ?>
-                                        <th>Time</th>
-                                        <th>Payment Method</th>
-                                        <th>Amount (D)</th>
-                                        <th>Kg Sold</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $totalKgSold = 0;
-                                    foreach ($todaySales as $sale):
-                                        // Get kg sold for this sale
-                                        $stmt = $pdo->prepare("SELECT SUM(quantity_kg) as total_kg FROM sale_items WHERE sale_id = ?");
-                                        $stmt->execute([$sale['id']]);
-                                        $kgSold = $stmt->fetch()['total_kg'] ?? 0;
-                                        $totalKgSold += $kgSold;
-                                    ?>
-                                        <tr>
-                                            <td>#<?= $sale['id'] ?></td>
-                                            <?php if (isAdmin()): ?>
-                                                <td><?= htmlspecialchars($sale['employee_name'] ?? 'Admin') ?></td>
-                                            <?php endif; ?>
-                                            <td><?= date('H:i', strtotime($sale['sale_date'])) ?></td>
-                                            <td>
-                                                <span class="payment-method-badge 
+    <div class="row mt-3">
+        <div class="col-md-8">
+            <div class="summary-card">
+                <h5>Today's Sales</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Sale ID</th>
+                            <?php if (isAdmin()): ?>
+                                <th>Employee</th>
+                            <?php endif; ?>
+                            <th>Time</th>
+                            <th>Payment Method</th>
+                            <th>Amount (D)</th>
+                            <th>Kg Sold</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $totalKgSold = 0;
+                        foreach ($todaySales as $sale): 
+                            // Get kg sold for this sale
+                            $stmt = $pdo->prepare("SELECT SUM(quantity_kg) as total_kg FROM sale_items WHERE sale_id = ?");
+                            $stmt->execute([$sale['id']]);
+                            $kg = $stmt->fetch()['total_kg'] ?? 0;
+                            $totalKgSold += $kg;
+                        ?>
+                            <tr>
+                                <td>#<?= $sale['id'] ?></td>
+                                <?php if (isAdmin()): ?>
+                                    <td><?= htmlspecialchars($sale['employee_name'] ?? 'Admin') ?></td>
+                                <?php endif; ?>
+                                <td><?= date('H:i', strtotime($sale['sale_date'])) ?></td>
+                                <td>
+                                    <span class="payment-method-badge 
                                         <?= $sale['payment_method'] === 'cash' ? 'cash-badge' : ($sale['payment_method'] === 'credit' ? 'credit-badge' : 'mobile-badge') ?>">
-                                                    <?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?>
-                                                </span>
-                                            </td>
-                                            <td><?= number_format($sale['total_amount'], 2) ?></td>
-                                            <td><?= number_format($kgSold, 2) ?></td>
-                                            <td>
-                                                <a href="employee_sales.php?cancel_sale=<?= $sale['id'] ?>#daily-report"
-                                                    class="btn btn-sm btn-danger"
-                                                    onclick="return confirm('Are you sure you want to cancel this sale? Inventory will be restored.')">
-                                                    Cancel
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                    <tr class="table-primary">
-                                        <td colspan="<?= isAdmin() ? 5 : 4 ?>" class="text-end"><strong>Total All Sales:</strong></td>
-                                        <td class="fw-bold"><?= number_format($totalKgSold, 2) ?> kg</td>
-                                        <td class="fw-bold">D<?= number_format($totalExpected, 2) ?></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <?php if ($totalCashSales > 0 && !isAdmin()): ?>
-                            <form method="POST">
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <h5>Cash Reconciliation</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label">Physical Cash Count (D)</label>
-                                                <input type="number" step="0.01" class="form-control" name="physical_cash" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Petty Cash (D)</label>
-                                                <input type="number" step="0.01" class="form-control" name="petty_cash" value="0">
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <p><strong>Expected Cash:</strong> D<?= number_format($totalCashSales, 2) ?></p>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <p><strong>Deficit/Surplus:</strong> D<span id="deficitDisplay">0.00</span></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button type="submit" name="submit_daily_report" class="btn btn-primary">Submit Daily Report</button>
-                            </form>
-                        <?php elseif (isAdmin()): ?>
-                            <div class="alert alert-info">Admins can view but not submit cash reconciliations.</div>
-                        <?php else: ?>
-                            <div class="alert alert-info">No cash sales today. Reconciliation not needed.</div>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="summary-card bg-light">
-                            <h5>Today's Summary</h5>
-                            <table class="table">
-                                <tr>
-                                    <th>Total Sales:</th>
-                                    <td>D<?= number_format($totalExpected, 2) ?></td>
-                                </tr>
-                                <tr>
-                                    <th>Total Kg Sold:</th>
-                                    <td><?= number_format($totalKgSold, 2) ?> kg</td>
-                                </tr>
-                                <tr>
-                                    <th>Cash Sales:</th>
-                                    <td>D<?= number_format($totalCashSales, 2) ?></td>
-                                </tr>
-                                <tr>
-                                    <th>Credit Sales:</th>
-                                    <td>D<?= number_format($totalCreditSales, 2) ?></td>
-                                </tr>
-                                <tr>
-                                    <th>Mobile Money:</th>
-                                    <td>D<?= number_format($totalMobileMoneySales, 2) ?></td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                                        <?= ucfirst(str_replace('_', ' ', $sale['payment_method'])) ?>
+                                    </span>
+                                </td>
+                                <td><?= number_format($sale['total_amount'], 2) ?></td>
+                                <td><?= number_format($kg, 2) ?></td>
+                                <td>
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="sale_id" value="<?= $sale['id'] ?>">
+                                        <button type="submit" name="cancel_sale" class="btn btn-sm btn-danger" 
+                                            onclick="return confirm('Are you sure you want to cancel this sale?')">
+                                            Cancel
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <tr class="table-primary">
+                            <td colspan="<?= isAdmin() ? 4 : 3 ?>" class="text-end"><strong>Total All Sales:</strong></td>
+                            <td class="fw-bold">D<?= number_format($totalExpected, 2) ?></td>
+                            <td class="fw-bold"><?= number_format($totalKgSold, 2) ?> kg</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            <!-- Reconciliation Reports Tab (Admin Only) -->
-            <div class="tab-pane fade" id="reconciliation" role="tabpanel">
-                <h4><?= isAdmin() ? 'All' : 'My' ?> Cash Reconciliation Reports</h4>
-
-                <?php if (isAdmin()): ?>
-                    <div class="card mb-4">
+            <?php if ($totalCashSales > 0 && !isAdmin() && !$hasSubmittedToday): ?>
+                <form method="POST">
+                    <div class="card mb-3">
                         <div class="card-header">
-                            <h5>Filter Reports</h5>
+                            <h5>Cash Reconciliation</h5>
                         </div>
                         <div class="card-body">
-                            <form id="reconciliationFilter">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Employee</label>
-                                        <select class="form-select" name="employee_filter">
-                                            <option value="">All Employees</option>
-                                            <?php
-                                            $employees = $pdo->query("SELECT id, username FROM users WHERE role = 'employee'")->fetchAll();
-                                            foreach ($employees as $emp): ?>
-                                                <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['username']) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Date From</label>
-                                        <input type="date" class="form-control" name="date_from">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Date To</label>
-                                        <input type="date" class="form-control" name="date_to">
-                                    </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Physical Cash Count (D)</label>
+                                    <input type="number" step="0.01" class="form-control" name="physical_cash" required>
                                 </div>
-                                <div class="mt-3">
-                                    <button type="submit" class="btn btn-primary">Apply Filters</button>
-                                    <button type="reset" class="btn btn-outline-secondary">Reset</button>
+                                <div class="col-md-6">
+                                    <label class="form-label">Petty Cash (D)</label>
+                                    <input type="number" step="0.01" class="form-control" name="petty_cash" value="0">
                                 </div>
-                            </form>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Expected Cash:</strong> D<?= number_format($totalCashSales, 2) ?></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Deficit/Surplus:</strong> D<span id="deficitDisplay">0.00</span></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                <?php endif; ?>
 
-                <?php if (empty($allReconciliations)): ?>
-                    <div class="alert alert-info">No reconciliation reports found.</div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <?php if (isAdmin()): ?>
-                                        <th>Employee</th>
-                                    <?php endif; ?>
-                                    <th>Date</th>
-                                    <th>Expected (D)</th>
+                    <button type="submit" name="submit_daily_report" class="btn btn-primary">Submit Daily Report</button>
+                </form>
+            <?php elseif ($hasSubmittedToday): ?>
+                <div class="alert alert-info">You have already submitted your reconciliation report for today.</div>
+            <?php elseif (isAdmin()): ?>
+                <div class="alert alert-info">Admins can view but not submit cash reconciliations.</div>
+            <?php else: ?>
+                <div class="alert alert-info">No cash sales today. Reconciliation not needed.</div>
+            <?php endif; ?>
+        </div>
 
-                                    <?php if (isAdmin() || isEmployee()): ?>
-                                        <th>Petty Cash (D)</th>
-                                    <?php endif; ?>
-                                    <th>Total Cash (D)</th>
-                                    <th>Deficit/Surplus (D)</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($allReconciliations as $report):
-                                    $deficit = $report['deficit'];
-                                    $isProblem = $deficit < 0;
-                                ?>
-                                    <tr>
-                                        <?php if (isAdmin()): ?>
-                                            <td><?= htmlspecialchars($report['employee_name']) ?></td>
-                                        <?php endif; ?>
-                                        <td><?= date('M d, Y', strtotime($report['report_date'])) ?></td>
-                                        <td><?= number_format($report['expected_amount'], 2) ?></td>
-
-                                        <?php if (isAdmin() || isEmployee()): ?>
-                                            <td><?= number_format($report['petty_cash'], 2) ?></td>
-                                        <?php endif; ?>
-                                        <td><?= number_format($report['total_cash'], 2) ?></td>
-                                        <td class="<?= $isProblem ? 'text-danger fw-bold' : 'text-success' ?>">
-                                            <?= number_format($deficit, 2) ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($isProblem): ?>
-                                                <span class="badge bg-danger">Discrepancy</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-success">Balanced</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
+        <div class="col-md-4">
+            <div class="summary-card bg-light">
+                <h5>Today's Summary</h5>
+                <table class="table">
+                    <tr>
+                        <th>Total Sales:</th>
+                        <td>D<?= number_format($totalExpected, 2) ?></td>
+                    </tr>
+                    <tr>
+                        <th>Total Kg Sold:</th>
+                        <td><?= number_format($totalKgSold, 2) ?> kg</td>
+                    </tr>
+                    <tr>
+                        <th>Cash Sales:</th>
+                        <td>D<?= number_format($totalCashSales, 2) ?></td>
+                    </tr>
+                    <tr>
+                        <th>Credit Sales:</th>
+                        <td>D<?= number_format($totalCreditSales, 2) ?></td>
+                    </tr>
+                    <tr>
+                        <th>Mobile Money:</th>
+                        <td>D<?= number_format($totalMobileMoneySales, 2) ?></td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
+</div>
+
+            <!-- Update the Reconciliation Reports Tab content with this: -->
+<div class="tab-pane fade" id="reconciliation" role="tabpanel">
+    <h4><?= isAdmin() ? 'All' : 'My' ?> Cash Reconciliation Reports</h4>
+
+    <?php if (isAdmin()): ?>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Filter Reports</h5>
+            </div>
+            <div class="card-body">
+                <form id="reconciliationFilter">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Employee</label>
+                            <select class="form-select" name="employee_filter">
+                                <option value="">All Employees</option>
+                                <?php
+                                $employees = $pdo->query("SELECT id, username FROM users WHERE role = 'employee'")->fetchAll();
+                                foreach ($employees as $emp): ?>
+                                    <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['username']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Date From</label>
+                            <input type="date" class="form-control" name="date_from">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Date To</label>
+                            <input type="date" class="form-control" name="date_to">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                        <button type="reset" class="btn btn-outline-secondary">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (empty($allReconciliations)): ?>
+        <div class="alert alert-info">No reconciliation reports found.</div>
+    <?php else: ?>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <?php if (isAdmin()): ?>
+                            <th>Employee</th>
+                        <?php endif; ?>
+                        <th>Date</th>
+                        <th>Expected (D)</th>
+                        <th>Physical Cash (D)</th>
+                        <th>Petty Cash (D)</th>
+                        <th>Total Cash (D)</th>
+                        <th>Deficit/Surplus (D)</th>
+                        <th>Status</th>
+                        <?php if (isAdmin()): ?>
+                            <th>Actions</th>
+                        <?php endif; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($allReconciliations as $report):
+                        $deficit = $report['deficit'];
+                        $isProblem = $deficit < 0;
+                    ?>
+                        <tr>
+                            <?php if (isAdmin()): ?>
+                                <td><?= htmlspecialchars($report['employee_name']) ?></td>
+                            <?php endif; ?>
+                            <td><?= date('M d, Y', strtotime($report['report_date'])) ?></td>
+                            <td><?= number_format($report['expected_amount'], 2) ?></td>
+                            <td><?= number_format($report['physical_cash'], 2) ?></td>
+                            <td><?= number_format($report['petty_cash'], 2) ?></td>
+                            <td><?= number_format($report['total_cash'], 2) ?></td>
+                            <td class="<?= $isProblem ? 'text-danger fw-bold' : 'text-success' ?>">
+                                <?= number_format($deficit, 2) ?>
+                            </td>
+                            <td>
+                                <?php if ($isProblem): ?>
+                                    <span class="badge bg-danger">Discrepancy</span>
+                                <?php else: ?>
+                                    <span class="badge bg-success">Balanced</span>
+                                <?php endif; ?>
+                            </td>
+                            <?php if (isAdmin()): ?>
+                                <td>
+                                    <button class="btn btn-sm btn-primary edit-reconciliation" 
+                                        data-id="<?= $report['id'] ?>"
+                                        data-physical="<?= $report['physical_cash'] ?>"
+                                        data-petty="<?= $report['petty_cash'] ?>">
+                                        Edit
+                                    </button>
+                                </td>
+                            <?php endif; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+
+    <!-- Edit Reconciliation Modal (for admin) -->
+    <?php if (isAdmin()): ?>
+        <div class="modal fade" id="editReconciliationModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Reconciliation Report</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" id="editReconciliationForm">
+                        <div class="modal-body">
+                            <input type="hidden" name="report_id" id="report_id">
+                            <div class="mb-3">
+                                <label class="form-label">Physical Cash (D)</label>
+                                <input type="number" step="0.01" class="form-control" name="physical_cash" id="edit_physical_cash" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Petty Cash (D)</label>
+                                <input type="number" step="0.01" class="form-control" name="petty_cash" id="edit_petty_cash" required>
+                            </div>
+                            <div class="alert alert-info">
+                                Expected Cash: D<span id="edit_expected_amount">0.00</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" name="update_reconciliation" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Add this to your existing JavaScript
+            document.addEventListener('DOMContentLoaded', function() {
+                // Edit reconciliation modal
+                const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
+                
+                document.querySelectorAll('.edit-reconciliation').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const reportId = this.dataset.id;
+                        const physicalCash = this.dataset.physical;
+                        const pettyCash = this.dataset.petty;
+                        
+                        // Find the row to get expected amount
+                        const row = this.closest('tr');
+                        const expectedAmount = row.querySelector('td:nth-child(3)').textContent.replace(/[^0-9.]/g, '');
+                        
+                        // Set form values
+                        document.getElementById('report_id').value = reportId;
+                        document.getElementById('edit_physical_cash').value = physicalCash;
+                        document.getElementById('edit_petty_cash').value = pettyCash;
+                        document.getElementById('edit_expected_amount').textContent = expectedAmount;
+                        
+                        editModal.show();
+                    });
+                });
+            });
+        </script>
+    <?php endif; ?>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
