@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 08, 2025 at 02:05 PM
+-- Generation Time: Apr 09, 2025 at 02:40 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -44,10 +44,15 @@ CREATE TABLE `cash_reconciliations` (
 --
 
 INSERT INTO `cash_reconciliations` (`id`, `employee_id`, `report_date`, `expected_amount`, `physical_cash`, `petty_cash`, `deficit`, `total_cash`, `submitted_at`) VALUES
-(1, 5, '2025-04-06', 800.00, 800.00, 500.00, 0.00, 1300.00, '2025-04-06 02:23:52'),
+(1, 5, '2025-04-08', 800.00, 800.00, 500.00, 0.00, 1300.00, '2025-04-08 02:23:52'),
 (3, 5, '2025-04-06', 800.00, 600.00, 0.00, 200.00, 600.00, '2025-04-06 13:27:11'),
 (4, 5, '2025-04-06', 800.00, 500.00, 500.00, 300.00, 1000.00, '2025-04-06 13:30:03'),
-(5, 5, '2025-04-06', 800.00, 800.00, 500.00, 0.00, 1300.00, '2025-04-06 13:39:43');
+(5, 5, '2025-04-06', 800.00, 800.00, 500.00, 0.00, 1300.00, '2025-04-06 13:39:43'),
+(6, 5, '2025-04-08', 290.00, 290.00, 500.00, 0.00, 790.00, '2025-04-08 12:47:26'),
+(7, 5, '2025-04-08', 300.00, 300.00, 500.00, 0.00, 800.00, '2025-04-08 17:07:31'),
+(8, 5, '2025-04-08', 300.00, 400.00, 100.00, -100.00, 500.00, '2025-04-08 17:09:15'),
+(9, 5, '2025-04-08', 800.00, 800.00, 100.00, 0.00, 900.00, '2025-04-08 23:27:57'),
+(10, 5, '2025-04-09', 400.00, 400.00, 500.00, 0.00, 900.00, '2025-04-09 00:08:07');
 
 -- --------------------------------------------------------
 
@@ -161,10 +166,8 @@ CREATE TABLE `detailed_costs` (
 --
 
 INSERT INTO `detailed_costs` (`id`, `fish_type_id`, `date_recorded`, `fingerlings_quantity`, `fingerlings_unit_price`, `fingerlings_total_cost`, `starter_feed_quantity`, `starter_feed_unit_price`, `starter_feed_total_cost`, `grower_feed_quantity`, `grower_feed_unit_price`, `grower_feed_total_cost`, `basin_quantity`, `basin_unit_price`, `basin_total_cost`, `fish_nets_quantity`, `fish_nets_unit_price`, `fish_nets_total_cost`, `water_quality_meter_quantity`, `water_quality_meter_unit_price`, `water_quality_meter_total_cost`, `pond_pumps_quantity`, `pond_pumps_unit_price`, `pond_pumps_total_cost`, `pond_aeration_quantity`, `pond_aeration_unit_price`, `pond_aeration_total_cost`, `pond_vacuum_quantity`, `pond_vacuum_unit_price`, `pond_vacuum_total_cost`, `fencing_quantity`, `fencing_unit_price`, `fencing_total_cost`, `transport_senegal_quantity`, `transport_senegal_unit_price`, `transport_senegal_total_cost`, `transport_gambia_quantity`, `transport_gambia_unit_price`, `transport_gambia_total_cost`, `water_quantity`, `water_unit_price`, `water_total_cost`, `electricity_quantity`, `electricity_unit_price`, `electricity_total_cost`, `maintenance_cost`, `rent_cost`, `refrigeration_cost`, `marketing_cost`, `medication_cost`, `hosting_cost`, `electrical_installation_cost`, `business_registration_cost`, `insurance_cost`, `tax_cost`, `total_fingerlings_cost`, `total_feed_cost`, `total_material_cost`, `total_transport_cost`, `total_services_cost`, `running_cost`, `smoker_ovon_quantity`, `smoker_ovon_unit_price`, `smoker_ovon_total_cost`) VALUES
-(1, 1, '2025-04-04', 4, 4.00, 10.00, 0.00, 0.00, 12.00, 0.00, 0.00, 5.96, 3, 1.00, 3.00, 2, 2.00, 4.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 4, 3.99, 15.96, 0, 0.00, 0.00, 4, 4.00, 16.00, 4, 4.00, 16.00, 3.99, 4.00, 3.99, 4.00, 4.00, 3.98, 3.99, 4.00, 3.99, 3.99, 10.00, 17.96, 7.00, 15.96, 71.93, 122.85, NULL, 0, 0),
-(3, 2, '2025-04-04', 4, 4.00, 12.00, 4.00, 3.00, 12.00, 4.00, 5.98, 23.92, 3, 5.00, 15.00, 4, 5.00, 20.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 5, 7.00, 35.00, 0, 0.00, 0.00, 4, 5.98, 23.92, 4, 2.00, 8.00, 1.98, 4.00, 4.00, 3.00, 4.98, 6.98, 8.99, 8.99, 4.00, 3.95, 12.00, 35.92, 35.00, 35.00, 82.79, 200.71, NULL, 0, 0),
-(6, 1, '2025-04-05', 1, 3.00, 3.00, 3.00, 3.00, 9.00, 3.00, 2.99, 8.97, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 2.95, 8.85, 3, 3.00, 9.00, 3, 2.99, 8.97, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 2.96, 8.88, 33, 3.00, 99.00, 3, 3.00, 9.00, 3.00, 2.99, 3.00, 3.00, 2.99, 2.99, 3.00, 3.00, 3.00, 2.97, 3.00, 17.97, 62.82, 17.88, 137.94, 239.61, NULL, 3, 4),
-(7, 1, '2025-04-05', 5, 6.00, 30.00, 6.00, 6.00, 36.00, 4.00, 4.98, 19.92, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 30.00, 55.92, 0.00, 0.00, 0.00, 85.92, NULL, 0, 0);
+(7, 1, '2025-04-05', 5, 6.00, 30.00, 6.00, 6.00, 36.00, 4.00, 4.98, 19.92, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 30.00, 55.92, 0.00, 0.00, 0.00, 85.92, NULL, 0, 0),
+(8, 2, '2025-04-08', 3, 3.00, 9.00, 3.00, 3.00, 9.00, 3.00, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3, 3.00, 9.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 3.00, 9.00, 18.00, 63.00, 18.00, 48.00, 156.00, NULL, 3, 0);
 
 -- --------------------------------------------------------
 
@@ -186,6 +189,27 @@ CREATE TABLE `employee_permissions` (
 
 INSERT INTO `employee_permissions` (`id`, `user_id`, `can_sell`, `can_record_fatality`, `can_process_orders`) VALUES
 (1, 5, 1, 1, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `employee_salaries`
+--
+
+CREATE TABLE `employee_salaries` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `monthly_salary` decimal(10,2) NOT NULL,
+  `effective_date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `employee_salaries`
+--
+
+INSERT INTO `employee_salaries` (`id`, `employee_id`, `monthly_salary`, `effective_date`, `created_at`) VALUES
+(1, 5, 20.00, '2025-04-08', '2025-04-08 15:27:30');
 
 -- --------------------------------------------------------
 
@@ -234,7 +258,8 @@ CREATE TABLE `fish_types` (
 
 INSERT INTO `fish_types` (`id`, `name`, `description`, `price_per_kg`, `image_path`) VALUES
 (1, 'Catfish', 'Freshwater catfish from our pond', 100.00, 'uploads/fish_images/67f4744c3de1d_fish.jpg'),
-(2, 'Tilapia', 'High-quality tilapia fish', 200.00, 'uploads/fish_images/67f47455de3e2_fish2.jpg');
+(2, 'Tilapia', 'High-quality tilapia fish', 200.00, 'uploads/fish_images/67f47455de3e2_fish2.jpg'),
+(6, 'smoke Catfish', 'this chimical free smoke fish', 200.00, 'uploads/fish_images/67f517f0a1f43_header_fishes_image.jpg');
 
 -- --------------------------------------------------------
 
@@ -254,8 +279,9 @@ CREATE TABLE `inventory` (
 --
 
 INSERT INTO `inventory` (`id`, `fish_type_id`, `quantity_kg`, `last_updated`) VALUES
-(1, 1, 28.00, '2025-04-06 19:25:59'),
-(2, 2, 5.00, '2025-04-06 14:01:27');
+(1, 1, 25.00, '2025-04-09 00:35:15'),
+(2, 2, 9.00, '2025-04-09 00:30:29'),
+(6, 6, 1.60, '2025-04-08 12:34:56');
 
 -- --------------------------------------------------------
 
@@ -297,8 +323,8 @@ CREATE TABLE `location_inventory` (
 --
 
 INSERT INTO `location_inventory` (`id`, `location_id`, `employee_id`, `fish_type_id`, `quantity`, `last_updated`) VALUES
-(1, 1, 5, 1, 0.00, '2025-04-06 01:33:52'),
-(2, 1, 5, 2, 0.00, '2025-04-06 14:01:27');
+(1, 1, 5, 1, 28.00, '2025-04-09 00:35:15'),
+(2, 1, 5, 2, 14.00, '2025-04-09 00:30:29');
 
 -- --------------------------------------------------------
 
@@ -422,11 +448,10 @@ INSERT INTO `sales` (`id`, `employee_id`, `total_amount`, `sale_date`, `payment_
 (12, 5, 400.00, '2025-04-06 00:35:42', 'credit'),
 (13, 1, 100.00, '2025-04-06 00:50:02', 'cash'),
 (14, 5, 100.00, '2025-04-06 01:17:45', 'cash'),
-(15, 5, 200.00, '2025-04-06 01:33:52', 'cash'),
 (16, 5, 200.00, '2025-04-06 02:06:27', 'cash'),
 (17, 5, 200.00, '2025-04-06 02:10:56', 'cash'),
-(18, 5, 400.00, '2025-04-06 14:00:09', 'cash'),
-(19, 5, 400.00, '2025-04-06 14:01:27', 'cash');
+(25, 5, 400.00, '2025-04-09 00:30:02', 'cash'),
+(27, 5, 100.00, '2025-04-09 00:35:15', 'cash');
 
 -- --------------------------------------------------------
 
@@ -462,11 +487,10 @@ INSERT INTO `sale_items` (`id`, `sale_id`, `fish_type_id`, `quantity_kg`, `unit_
 (13, 12, 2, 2.00, 200.00),
 (14, 13, 1, 1.00, 100.00),
 (15, 14, 1, 1.00, 100.00),
-(16, 15, 1, 2.00, 100.00),
 (17, 16, 2, 1.00, 200.00),
 (18, 17, 2, 1.00, 200.00),
-(19, 18, 2, 2.00, 200.00),
-(20, 19, 2, 2.00, 200.00);
+(27, 25, 1, 4.00, 100.00),
+(29, 27, 1, 1.00, 100.00);
 
 -- --------------------------------------------------------
 
@@ -484,15 +508,18 @@ CREATE TABLE `shop_locations` (
   `closing_time` time NOT NULL,
   `is_open` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `shop_locations`
 --
 
-INSERT INTO `shop_locations` (`id`, `employee_id`, `location_name`, `region`, `contact_phone`, `opening_time`, `closing_time`, `is_open`, `created_at`, `updated_at`) VALUES
-(1, 5, 'Abdoulie Bah', 'Kombo kuloro', '3114881', '08:00:00', '17:00:00', 1, '2025-04-08 11:15:42', '2025-04-08 11:20:55');
+INSERT INTO `shop_locations` (`id`, `employee_id`, `location_name`, `region`, `contact_phone`, `opening_time`, `closing_time`, `is_open`, `created_at`, `updated_at`, `latitude`, `longitude`) VALUES
+(3, 1, 'admin shop', 'Kuloro', '3114881', '22:00:00', '23:00:00', 1, '2025-04-08 21:59:19', '2025-04-08 22:12:02', 13.33164300, -16.00878100),
+(4, 5, 'brikama', 'Kombo ', '3114881', '22:00:00', '23:00:00', 1, '2025-04-08 22:05:46', '2025-04-08 22:08:36', 13.33156200, -16.00862100);
 
 -- --------------------------------------------------------
 
@@ -578,6 +605,13 @@ ALTER TABLE `detailed_costs`
 ALTER TABLE `employee_permissions`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `employee_salaries`
+--
+ALTER TABLE `employee_salaries`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `employee_id` (`employee_id`);
 
 --
 -- Indexes for table `fish_fatalities`
@@ -673,7 +707,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `cash_reconciliations`
 --
 ALTER TABLE `cash_reconciliations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `contact_messages`
@@ -691,12 +725,18 @@ ALTER TABLE `contact_submissions`
 -- AUTO_INCREMENT for table `detailed_costs`
 --
 ALTER TABLE `detailed_costs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `employee_permissions`
 --
 ALTER TABLE `employee_permissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `employee_salaries`
+--
+ALTER TABLE `employee_salaries`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
@@ -709,13 +749,13 @@ ALTER TABLE `fish_fatalities`
 -- AUTO_INCREMENT for table `fish_types`
 --
 ALTER TABLE `fish_types`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `inventory`
 --
 ALTER TABLE `inventory`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `locations`
@@ -727,7 +767,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `location_inventory`
 --
 ALTER TABLE `location_inventory`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `orders`
@@ -745,19 +785,19 @@ ALTER TABLE `partners`
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `sale_items`
 --
 ALTER TABLE `sale_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT for table `shop_locations`
 --
 ALTER TABLE `shop_locations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `team_members`
@@ -792,6 +832,12 @@ ALTER TABLE `detailed_costs`
 --
 ALTER TABLE `employee_permissions`
   ADD CONSTRAINT `employee_permissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `employee_salaries`
+--
+ALTER TABLE `employee_salaries`
+  ADD CONSTRAINT `employee_salaries_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `users` (`id`);
 
 --
 -- Constraints for table `fish_fatalities`

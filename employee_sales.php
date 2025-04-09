@@ -501,13 +501,12 @@ include 'navbar.php';
                                     </div>
 
                                     <div class="mt-4">
-                                        <label for="money_given" class="form-label">Money Given by Customer (D)</label>
+                                <label for="money_given" class="form-label">Money Given by Customer (D)</label>
                                         <input type="number" step="0.01" min="0" class="form-control" id="money_given" name="money_given" required>
-                                        <div class="mt-2">
-                                            <span id="changeDisplay" class="badge" style="font-size: 1.2rem; font-weight: bold; background-color: rgba(0, 0, 0, 0.8); color: white;">Change: D0.00</span>
+                                    <div class="mt-2">
+                                         <span id="changeDisplay" class="badge" style="font-size: 1.2rem; font-weight: bold; background-color: rgba(0, 0, 0, 0.8); color: white;">Change: D0.00</span>
                                         </div>
-                                    </div>
-
+                                        </div>
                                     <div class="mt-4">
                                         <button type="submit" class="btn btn-primary">Complete Sale</button>
                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1029,6 +1028,72 @@ include 'navbar.php';
                 window.location.href = 'employee_sales.php';
             }
         });
+        // Update the calculateTotal function to also update the change display
+function calculateTotal() {
+    let total = 0;
+    document.querySelectorAll('.fish-item').forEach(item => {
+        const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
+        const price = parseFloat(item.querySelector('.price').value) || 0;
+        total += quantity * price;
+    });
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+    updateChangeDisplay(); // Add this line to update the change display
+}
+// Update the existing change display calculation
+function updateChangeDisplay() {
+    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+    const change = moneyGiven - totalAmount;
+    const absChange = Math.abs(change);
+    
+    if (change < 0) {
+        changeDisplay.textContent = `Short: D${absChange.toFixed(2)}`;
+        changeDisplay.className = 'badge bg-danger';
+    } else if (change === 0) {
+        changeDisplay.textContent = `Exact Amount`;
+        changeDisplay.className = 'badge bg-success';
+    } else {
+        changeDisplay.textContent = `Change: D${absChange.toFixed(2)}`;
+        changeDisplay.className = 'badge bg-success';
+    }
+}
+
+// Call this whenever money given or total changes
+document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
+// Replace the existing sales form submission handler with this:
+    document.getElementById('salesForm').addEventListener('submit', function(e) {
+    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+    const change = moneyGiven - totalAmount;
+    
+    // If change is not exactly 0, show confirmation
+    if (change !== 0) {
+        e.preventDefault(); // Prevent form submission
+        
+        // Format the amounts for display
+        const formattedTotal = totalAmount.toFixed(2);
+        const formattedGiven = moneyGiven.toFixed(2);
+        const formattedChange = Math.abs(change).toFixed(2);
+        
+        // Determine change direction
+        const changeDirection = change < 0 ? 'short by' : 'give change of';
+        
+        // Show confirmation dialog
+        const confirmed = confirm(
+            `Transaction Details:\n\n` +
+            `Total: D${formattedTotal}\n` +
+            `Money Given: D${formattedGiven}\n` +
+            `You need to ${changeDirection} D${formattedChange}\n\n` +
+            `Do you want to complete this transaction?`
+        );
+        
+        // If confirmed, submit the form
+        if (confirmed) {
+            this.submit();
+        }
+    }
+    // If change is exactly 0, form will submit normally without confirmation
+});
     </script>
 </body>
 
