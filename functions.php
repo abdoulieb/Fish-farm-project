@@ -271,3 +271,5 @@ function getPendingAssignmentsCount($employeeId)
     $stmt->execute([$employeeId]);
     return $stmt->fetch()['count'];
 }
+
+// Add to auth.php or functions.php
