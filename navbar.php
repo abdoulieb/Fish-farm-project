@@ -81,6 +81,24 @@ if (isEmployee()) {
                         <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'register.php' ? 'active' : '' ?>" href="register.php">Register</a>
                     </li>
                 <?php endif; ?>
+
+                <?php
+                // Add near the top of navbar.php (after session_start())
+                $pendingAssignments = 0;
+                if (isset($_SESSION['user_id']) && canEmployeeSell()) {
+                    $pendingAssignments = getPendingAssignmentsCount($_SESSION['user_id']);
+                }
+                ?>
+
+                <!-- In the navbar HTML, add this to the employee dropdown or main menu: -->
+                <li class="nav-item">
+                    <a class="nav-link" href="location_management.php">
+                        <i class="fas fa-boxes"></i> Inventory
+                        <?php if ($pendingAssignments > 0): ?>
+                            <span class="badge bg-danger rounded-pill"><?= $pendingAssignments ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
             </ul>
         </div>
     </div>

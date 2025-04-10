@@ -220,40 +220,54 @@ function cancelSale($saleId, $employeeId = null)
 }
 // Add these functions to functions.php
 
-function getReconciliationById($id) {
+function getReconciliationById($id)
+{
     global $pdo;
     $stmt = $pdo->prepare("SELECT * FROM cash_reconciliations WHERE id = ?");
     $stmt->execute([$id]);
     return $stmt->fetch();
 }
 
-function updateReconciliation($id, $physicalCash, $pettyCash) {
+function updateReconciliation($id, $physicalCash, $pettyCash)
+{
     global $pdo;
-    
+
     try {
         $pdo->beginTransaction();
-        
+
         // Get the original reconciliation to calculate the difference
         $original = getReconciliationById($id);
         if (!$original) {
             throw new Exception("Reconciliation not found.");
         }
-        
+
         // Calculate new values
         $deficit = $original['expected_amount'] - $physicalCash;
         $totalCash = $physicalCash + $pettyCash;
-        
+
         $stmt = $pdo->prepare("
             UPDATE cash_reconciliations 
             SET physical_cash = ?, petty_cash = ?, deficit = ?, total_cash = ?
             WHERE id = ?
         ");
         $stmt->execute([$physicalCash, $pettyCash, $deficit, $totalCash, $id]);
-        
+
         $pdo->commit();
         return true;
     } catch (Exception $e) {
         $pdo->rollBack();
         return false;
     }
+}
+// Add to functions.php
+function getPendingAssignmentsCount($employeeId)
+{
+    global $pdo;
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as count 
+        FROM location_inventory 
+        WHERE employee_id = ? AND status = 'pending'
+    ");
+    $stmt->execute([$employeeId]);
+    return $stmt->fetch()['count'];
 }

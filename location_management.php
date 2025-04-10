@@ -3,49 +3,43 @@ require_once 'config.php';
 require_once 'auth.php';
 require_once 'navbar.php';
 
-// Handle form submission for inserting data into location_inventory
+// Replace the existing POST handler for add_assignment with this:
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_assignment'])) {
     $locationId = $_POST['location_id'];
     $employeeId = $_POST['employee_id'];
     $fishTypeId = $_POST['fish_type_id'];
     $quantity = $_POST['quantity'];
 
-    $stmt = $pdo->prepare("
-        INSERT INTO location_inventory (location_id, employee_id, fish_type_id, quantity)
-        VALUES (:location_id, :employee_id, :fish_type_id, :quantity)
-        ON DUPLICATE KEY UPDATE quantity = :quantity
-    ");
-    $stmt->execute([
-        ':location_id' => $locationId,
-        ':employee_id' => $employeeId,
-        ':fish_type_id' => $fishTypeId,
-        ':quantity' => $quantity
-    ]);
+    // Get current assignment if exists
+    $stmt = $pdo->prepare("SELECT * FROM location_inventory 
+                              WHERE location_id = ? AND employee_id = ? AND fish_type_id = ?");
+    $stmt->execute([$locationId, $employeeId, $fishTypeId]);
+    $existing = $stmt->fetch();
 
-    // Redirect to avoid form resubmission
+    if ($existing) {
+        // Update existing assignment
+        $stmt = $pdo->prepare("
+                UPDATE location_inventory 
+                SET quantity = quantity + ?, 
+                    last_assigned_quantity = ?,
+                    status = 'pending',
+                    last_updated = NOW()
+                WHERE id = ?
+            ");
+        $stmt->execute([$quantity, $quantity, $existing['id']]);
+    } else {
+        // Create new assignment
+        $stmt = $pdo->prepare("
+                INSERT INTO location_inventory 
+                (location_id, employee_id, fish_type_id, quantity, last_assigned_quantity, status)
+                VALUES (?, ?, ?, ?, ?, 'pending')
+            ");
+        $stmt->execute([$locationId, $employeeId, $fishTypeId, $quantity, $quantity]);
+    }
+
     header("Location: location_management.php");
     exit();
 }
-
-// Handle form submission for adding new location
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_location'])) {
-    $name = $_POST['name'];
-    $address = $_POST['address'];
-
-    $stmt = $pdo->prepare("
-        INSERT INTO locations (name, address)
-        VALUES (:name, :address)
-    ");
-    $stmt->execute([
-        ':name' => $name,
-        ':address' => $address
-    ]);
-
-    // Redirect to avoid form resubmission
-    header("Location: location_management.php");
-    exit();
-}
-
 // Handle location deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_location'])) {
     $locationId = $_POST['location_id'];
@@ -71,16 +65,26 @@ $employees = $pdo->query("SELECT * FROM users WHERE role = 'employee' ORDER BY u
 // Get all fish types
 $fishTypes = $pdo->query("SELECT * FROM fish_types ORDER BY name")->fetchAll();
 
-// Get current inventory assignments
+// Replace the current inventory assignments query with this:
 $inventoryAssignments = $pdo->query("
-    SELECT li.*, l.name as location_name, u.username as employee_name, ft.name as fish_type_name
+    SELECT li.*, l.name as location_name, u.username as employee_name, 
+           ft.name as fish_type_name,
+           CASE 
+               WHEN li.status = 'pending' THEN 'Pending Acceptance'
+               WHEN li.status = 'accepted' THEN 'Accepted'
+               WHEN li.status = 'rejected' THEN 'Rejected'
+               ELSE 'Unknown'
+           END as status_text,
+           (SELECT MAX(sale_date) FROM sales s 
+            JOIN sale_items si ON s.id = si.sale_id
+            WHERE s.employee_id = li.employee_id 
+            AND si.fish_type_id = li.fish_type_id) as last_sale_date
     FROM location_inventory li
     JOIN locations l ON li.location_id = l.id
     JOIN users u ON li.employee_id = u.id
     JOIN fish_types ft ON li.fish_type_id = ft.id
-    ORDER BY l.name, u.username, ft.name
-")->fetchAll();
-?>
+    ORDER BY li.status, l.name, u.username, ft.name
+")->fetchAll(); ?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -261,7 +265,7 @@ $inventoryAssignments = $pdo->query("
             </form>
         </div>
 
-        <!-- Current Assignments Table -->
+        <!-- Replace the Current Assignments Table with this: -->
         <h3 class="section-title"><i class="fas fa-clipboard-list me-2"></i>Current Inventory Assignments</h3>
         <div class="table-responsive">
             <?php if (count($inventoryAssignments) > 0): ?>
@@ -272,7 +276,9 @@ $inventoryAssignments = $pdo->query("
                             <th>Employee</th>
                             <th>Fish Type</th>
                             <th>Quantity (kg)</th>
-                            <th>Last Updated</th>
+                            <th>Last Assigned</th>
+                            <th>Last Sale</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -284,7 +290,31 @@ $inventoryAssignments = $pdo->query("
                                 <td><?= htmlspecialchars($assignment['fish_type_name']) ?></td>
                                 <td><?= number_format($assignment['quantity'], 2) ?></td>
                                 <td><?= date('M j, Y g:i a', strtotime($assignment['last_updated'])) ?></td>
+                                <td><?= $assignment['last_sale_date'] ? date('M j, Y g:i a', strtotime($assignment['last_sale_date'])) : 'Never' ?></td>
+                                <td>
+                                    <span class="badge 
+                                <?= $assignment['status'] == 'pending' ? 'bg-warning' : ($assignment['status'] == 'accepted' ? 'bg-success' : 'bg-danger') ?>">
+                                        <?= $assignment['status_text'] ?>
+                                    </span>
+                                </td>
                                 <td class="action-buttons">
+                                    <?php if ($assignment['status'] == 'pending' && $_SESSION['user_id'] == $assignment['employee_id']): ?>
+                                        <form method="POST" action="process_assignment.php" style="display: inline;">
+                                            <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
+                                            <input type="hidden" name="action" value="accept">
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i> Accept
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="process_assignment.php" style="display: inline;">
+                                            <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
+                                            <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-sm btn-danger"
+                                                onclick="return confirm('Are you sure you want to reject this assignment? The quantity will be returned.')">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                     <form method="POST" action="delete_assignment.php" style="display: inline;">
                                         <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger"
@@ -301,26 +331,24 @@ $inventoryAssignments = $pdo->query("
                 <div class="alert alert-info">No inventory assignments found. Create your first assignment above.</div>
             <?php endif; ?>
         </div>
-    </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+        <script>
+            // Enhance form usability
+            document.addEventListener('DOMContentLoaded', function() {
+                // Focus on first input field
+                document.querySelector('form input')?.focus();
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
-    <script>
-        // Enhance form usability
-        document.addEventListener('DOMContentLoaded', function() {
-            // Focus on first input field
-            document.querySelector('form input')?.focus();
-
-            // Add confirmation for delete actions
-            document.querySelectorAll('form[action="delete_assignment.php"]').forEach(form => {
-                form.addEventListener('submit', function(e) {
-                    if (!confirm('Are you sure you want to delete this assignment?')) {
-                        e.preventDefault();
-                    }
+                // Add confirmation for delete actions
+                document.querySelectorAll('form[action="delete_assignment.php"]').forEach(form => {
+                    form.addEventListener('submit', function(e) {
+                        if (!confirm('Are you sure you want to delete this assignment?')) {
+                            e.preventDefault();
+                        }
+                    });
                 });
             });
-        });
-    </script>
+        </script>
 </body>
 
 </html>

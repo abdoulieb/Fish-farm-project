@@ -137,36 +137,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $items = [];
         $totalAmount = 0;
 
-        // Validate quantities against inventory
-        foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
-            $quantity = floatval($_POST['quantity'][$index]);
-            if ($quantity > 0) {
-                // Check main inventory (for both admin and employees)
-                $stmt = $pdo->prepare("SELECT quantity_kg FROM inventory WHERE fish_type_id = ?");
-                $stmt->execute([$fishTypeId]);
-                $mainInventory = $stmt->fetch();
-
-                if (!$mainInventory || $mainInventory['quantity_kg'] < $quantity) {
-                    $_SESSION['error'] = "Not enough inventory available for this sale";
-                    header("Location: employee_sales.php");
-                    exit();
-                }
-
-                // For employees only, check assigned inventory
-                if (!isAdmin()) {
+        // In the POST handler for new sales, add this check before processing:
+        if (!isAdmin()) {
+            foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
+                $quantity = floatval($_POST['quantity'][$index]);
+                if ($quantity > 0) {
+                    // Check if assignment is accepted
                     $stmt = $pdo->prepare("
-                        SELECT quantity FROM location_inventory 
-                        WHERE employee_id = ? AND fish_type_id = ?
-                    ");
+                SELECT status FROM location_inventory 
+                WHERE employee_id = ? AND fish_type_id = ? AND status = 'accepted'
+            ");
                     $stmt->execute([$_SESSION['user_id'], $fishTypeId]);
-                    $assigned = $stmt->fetch();
+                    $assignment = $stmt->fetch();
 
-                    if (!$assigned || $assigned['quantity'] < $quantity) {
-                        $_SESSION['error'] = "You don't have enough assigned inventory for this sale";
+                    if (!$assignment) {
+                        $_SESSION['error'] = "You must have accepted inventory assignments to make sales";
                         header("Location: employee_sales.php");
                         exit();
                     }
                 }
+
 
                 $fish = getFishTypeById($fishTypeId);
                 $items[] = [
@@ -1094,6 +1084,77 @@ include 'navbar.php';
                     }
                     // If change is exactly 0, form will submit normally without confirmation
                 });
+                // Add this to the existing JavaScript in employee_sales.php
+                function checkPendingAssignments() {
+                    fetch('check_assignments.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.error && data.count > 0) {
+                                // Update badge
+                                const badge = document.querySelector('.nav-link[href="location_management.php"] .badge');
+                                if (badge) {
+                                    badge.textContent = data.count;
+                                } else {
+                                    // Create badge if it doesn't exist
+                                    const link = document.querySelector('.nav-link[href="location_management.php"]');
+                                    if (link) {
+                                        const newBadge = document.createElement('span');
+                                        newBadge.className = 'badge bg-danger rounded-pill';
+                                        newBadge.textContent = data.count;
+                                        link.appendChild(newBadge);
+                                    }
+                                }
+
+                                // Show notification if count increased
+                                if (data.count > (window.lastAssignmentCount || 0)) {
+                                    showAssignmentNotification(data.count);
+                                }
+                                window.lastAssignmentCount = data.count;
+                            }
+                        })
+                        .catch(error => console.error('Error checking assignments:', error));
+                }
+
+                function showAssignmentNotification(count) {
+                    // Check if browser supports notifications
+                    if (!("Notification" in window)) {
+                        console.log("This browser does not support desktop notification");
+                        return;
+                    }
+
+                    // Check if we have permission
+                    if (Notification.permission === "granted") {
+                        createNotification(count);
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                                createNotification(count);
+                            }
+                        });
+                    }
+
+                    // Fallback alert if notifications are blocked
+                    if (Notification.permission === "denied") {
+                        alert(`You have ${count} pending inventory assignment(s) to review!`);
+                    }
+                }
+
+                function createNotification(count) {
+                    const notification = new Notification("Inventory Assignment Pending", {
+                        body: `You have ${count} pending inventory assignment(s) to review`,
+                        icon: "https://yourdomain.com/path/to/icon.png"
+                    });
+
+                    notification.onclick = function() {
+                        window.focus();
+                        window.location.href = "location_management.php";
+                    };
+                }
+
+                // Check every 5 minutes (300000 ms) or more frequently if needed
+                setInterval(checkPendingAssignments, 300000);
+                // Initial check when page loads
+                document.addEventListener('DOMContentLoaded', checkPendingAssignments);
             </script>
 </body>
 
