@@ -19,3 +19,8 @@ and to have report  of fatality and balance dead and live
 
 
 employee performance chart
+
+geolocation location to be adree,
+to add confirmed new stock quantity by employeed this should incated datetime 
+
+

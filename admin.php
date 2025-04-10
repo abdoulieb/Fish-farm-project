@@ -111,6 +111,9 @@ $assignments = $pdo->query("
                     <li class="nav-item">
                         <a class="nav-link" href="profit_analysis.php">Profit Analysis</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="employee_performance.php">Employee Performance</a>
+                    </li>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
