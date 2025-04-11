@@ -137,46 +137,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $items = [];
         $totalAmount = 0;
 
-        // In the POST handler for new sales, add this check before processing:
-        if (!isAdmin()) {
-            foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
-                $quantity = floatval($_POST['quantity'][$index]);
-                if ($quantity > 0) {
-                    // Check if assignment is accepted
-                    $stmt = $pdo->prepare("
-                SELECT status FROM location_inventory 
-                WHERE employee_id = ? AND fish_type_id = ? AND status = 'accepted'
-            ");
-                    $stmt->execute([$_SESSION['user_id'], $fishTypeId]);
-                    $assignment = $stmt->fetch();
+        // In the POST handler for new sales (around line 130 in employee_sales.php)
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fish_type_id'])) {
+            $paymentMethod = $_POST['payment_method'] ?? 'cash';
 
-                    if (!$assignment) {
-                        $_SESSION['error'] = "You must have accepted inventory assignments to make sales";
-                        header("Location: employee_sales.php");
-                        exit();
+            $items = [];
+            $totalAmount = 0;
+
+            // For employees (non-admins), check they have accepted assignments
+            if (!isAdmin()) {
+                foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
+                    $quantity = floatval($_POST['quantity'][$index]);
+                    if ($quantity > 0) {
+                        $stmt = $pdo->prepare("
+                    SELECT status FROM location_inventory
+                    WHERE employee_id = ? AND fish_type_id = ? AND status = 'accepted'
+                ");
+                        $stmt->execute([$_SESSION['user_id'], $fishTypeId]);
+                        $assignment = $stmt->fetch();
+
+                        if (!$assignment) {
+                            echo "<script>
+                        alert('You must have accepted inventory assignments to make sales.');
+                        window.location.href = 'employee_sales.php';
+                    </script>";
+                            exit();
+                        }
                     }
+
+                    $fish = getFishTypeById($fishTypeId);
+                    $items[] = [
+                        'fish_type_id' => $fishTypeId,
+                        'quantity' => $quantity,
+                        'unit_price' => $fish['price_per_kg']
+                    ];
+                    $totalAmount += $quantity * $fish['price_per_kg'];
                 }
-
-
-                $fish = getFishTypeById($fishTypeId);
-                $items[] = [
-                    'fish_type_id' => $fishTypeId,
-                    'quantity' => $quantity,
-                    'unit_price' => $fish['price_per_kg']
-                ];
-                $totalAmount += $quantity * $fish['price_per_kg'];
+            } else {
+                // For admins, no assignment check needed
+                foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
+                    $quantity = floatval($_POST['quantity'][$index]);
+                    $fish = getFishTypeById($fishTypeId);
+                    $items[] = [
+                        'fish_type_id' => $fishTypeId,
+                        'quantity' => $quantity,
+                        'unit_price' => $fish['price_per_kg']
+                    ];
+                    $totalAmount += $quantity * $fish['price_per_kg'];
+                }
             }
+
+            // Rest of the sale processing remains the same...
         }
 
+        // In the sale processing code (around line 160 in employee_sales.php)
         if (!empty($items)) {
             try {
                 $pdo->beginTransaction();
 
                 // Create sale record
                 $stmt = $pdo->prepare("
-                    INSERT INTO sales (employee_id, total_amount, payment_method) 
-                    VALUES (?, ?, ?)
-                ");
+            INSERT INTO sales (employee_id, total_amount, payment_method) 
+            VALUES (?, ?, ?)
+        ");
                 $stmt->execute([$_SESSION['user_id'], $totalAmount, $paymentMethod]);
                 $saleId = $pdo->lastInsertId();
 
@@ -184,24 +207,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($items as $item) {
                     // Add sale item
                     $stmt = $pdo->prepare("
-                        INSERT INTO sale_items (sale_id, fish_type_id, quantity_kg, unit_price) 
-                        VALUES (?, ?, ?, ?)
-                    ");
+                INSERT INTO sale_items (sale_id, fish_type_id, quantity_kg, unit_price) 
+                VALUES (?, ?, ?, ?)
+            ");
                     $stmt->execute([$saleId, $item['fish_type_id'], $item['quantity'], $item['unit_price']]);
 
-                    // Update main inventory (for both)
+                    // Update main inventory (for both admin and employee sales)
                     $stmt = $pdo->prepare("
-                        UPDATE inventory SET quantity_kg = quantity_kg - ? 
-                        WHERE fish_type_id = ?
-                    ");
+                UPDATE inventory SET quantity_kg = quantity_kg - ? 
+                WHERE fish_type_id = ?
+            ");
                     $stmt->execute([$item['quantity'], $item['fish_type_id']]);
 
                     // Update employee's assigned inventory (employees only)
                     if (!isAdmin()) {
                         $stmt = $pdo->prepare("
-                            UPDATE location_inventory SET quantity = quantity - ? 
-                            WHERE employee_id = ? AND fish_type_id = ?
-                        ");
+                    UPDATE location_inventory SET quantity = quantity - ? 
+                    WHERE employee_id = ? AND fish_type_id = ?
+                ");
                         $stmt->execute([$item['quantity'], $_SESSION['user_id'], $item['fish_type_id']]);
                     }
                 }
@@ -403,9 +426,8 @@ include 'navbar.php';
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#salesModal">
                     Add New Sale
                 </button>
-
                 <div class="mt-4">
-                    <h5>Total Assigned Inventory (Detailed)</h5>
+                    <h5>Available Inventory</h5>
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -433,7 +455,6 @@ include 'navbar.php';
                         </tbody>
                     </table>
                 </div>
-
                 <!-- Modal -->
                 <div class="modal fade" id="salesModal" tabindex="-1" aria-labelledby="salesModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
@@ -494,7 +515,7 @@ include 'navbar.php';
                                         <label for="money_given" class="form-label">Money Given by Customer (D)</label>
                                         <input type="number" step="0.01" min="0" class="form-control" id="money_given" name="money_given" required>
                                         <div class="mt-2">
-                                            <span id="changeDisplay" class="badge" style="font-size: 1.2rem; font-weight: bold; background-color: rgba(0, 0, 0, 0.8); color: white;">Change: D0.00</span>
+                                            <span id="changeDisplay" class="badge" style="font-size: 1.2rem; font-weight: bold; background-color: rgba(114, 101, 101, 0.8); color: white;">Change: D0.00</span>
                                         </div>
                                     </div>
                                     <div class="mt-4">
@@ -514,24 +535,56 @@ include 'navbar.php';
                         const changeDisplay = document.getElementById('changeDisplay');
 
                         function updateChangeDisplay() {
-                            const totalAmount = parseFloat(totalAmountDisplay.textContent) || 0;
-                            const moneyGiven = parseFloat(moneyGivenInput.value) || 0;
+                            const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                            const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
                             const change = moneyGiven - totalAmount;
+                            const changeDisplay = document.getElementById('changeDisplay');
 
-                            if (change < 0) {
-                                changeDisplay.textContent = `Change: D${change.toFixed(2)}`;
-                                changeDisplay.className = 'badge bg-danger';
+                            if (moneyGiven === 0) {
+                                changeDisplay.textContent = 'Enter amount given';
+                                changeDisplay.className = 'badge bg-light text-dark';
+                            } else if (change < 0) {
+                                changeDisplay.textContent = `Short: D${Math.abs(change).toFixed(2)}`;
+                                changeDisplay.className = 'badge bg-light text-danger';
                             } else if (change === 0) {
-                                changeDisplay.textContent = `Change: D${change.toFixed(2)}`;
-                                changeDisplay.className = 'badge bg-warning';
+                                changeDisplay.textContent = 'Exact amount';
+                                changeDisplay.className = 'badge bg-light text-success';
                             } else {
                                 changeDisplay.textContent = `Change: D${change.toFixed(2)}`;
-                                changeDisplay.className = 'badge bg-success';
-                                changeDisplay.style.color = 'green';
+                                changeDisplay.className = 'badge bg-light text-success';
                             }
                         }
 
-                        moneyGivenInput.addEventListener('input', updateChangeDisplay);
+                        // In the JavaScript section (around line 800 in employee_sales.php)
+                        document.getElementById('salesForm').addEventListener('submit', function(e) {
+                            const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                            const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                            const change = moneyGiven - totalAmount;
+
+                            if (change < 0) {
+                                e.preventDefault();
+                                alert(`Insufficient amount given!\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nShort: D${Math.abs(change).toFixed(2)}`);
+                                document.getElementById('money_given').focus();
+                                return false;
+                            }
+
+                            // For credit sales, skip the change confirmation
+                            const paymentMethod = document.getElementById('payment_method').value;
+                            if (paymentMethod === 'credit') {
+                                return true;
+                            }
+
+                            // If change is not exactly 0, show confirmation
+                            if (change !== 0) {
+                                if (!confirm(`Confirm transaction:\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nChange: D${change.toFixed(2)}`)) {
+                                    e.preventDefault();
+                                    return false;
+                                }
+                            }
+                        }); // Initialize change display
+                        document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
+                        updateChangeDisplay(); // Set initial state
+
                     });
                 </script>
             </div>

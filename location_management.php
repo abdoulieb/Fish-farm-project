@@ -21,22 +21,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_assignment'])) {
     $locationId = $_POST['location_id'];
     $employeeId = $_POST['employee_id'];
     $fishTypeId = $_POST['fish_type_id'];
-    $quantity = $_POST['quantity'];
+    $quantity = floatval($_POST['quantity']);
 
-    $stmt = $pdo->prepare("
-        INSERT INTO location_inventory (location_id, employee_id, fish_type_id, quantity, status, last_assigned_quantity)
-        VALUES (:location_id, :employee_id, :fish_type_id, :quantity, 'pending', :quantity)
-        ON DUPLICATE KEY UPDATE 
-            quantity = quantity + VALUES(quantity),
-            last_assigned_quantity = VALUES(last_assigned_quantity),
-            status = 'pending'
-    ");
-    $stmt->execute([
-        ':location_id' => $locationId,
-        ':employee_id' => $employeeId,
-        ':fish_type_id' => $fishTypeId,
-        ':quantity' => $quantity
-    ]);
+    try {
+        $pdo->beginTransaction();
+
+        // Check available inventory
+        $stmt = $pdo->prepare("SELECT quantity_kg FROM inventory WHERE fish_type_id = ?");
+        $stmt->execute([$fishTypeId]);
+        $inventory = $stmt->fetch();
+
+        if (!$inventory) {
+            throw new Exception("Fish type not found in inventory");
+        }
+
+        $availableKg = floatval($inventory['quantity_kg']);
+
+        if ($quantity > $availableKg) {
+            throw new Exception("Cannot assign more than available inventory. Available: $availableKg kg");
+        }
+
+        // Insert or update location assignment
+        $stmt = $pdo->prepare("
+            INSERT INTO location_inventory (location_id, employee_id, fish_type_id, quantity, status, last_assigned_quantity)
+            VALUES (:location_id, :employee_id, :fish_type_id, :quantity, 'pending', :quantity)
+            ON DUPLICATE KEY UPDATE 
+                quantity = quantity + VALUES(quantity),
+                last_assigned_quantity = VALUES(last_assigned_quantity),
+                status = 'pending'
+        ");
+        $stmt->execute([
+            ':location_id' => $locationId,
+            ':employee_id' => $employeeId,
+            ':fish_type_id' => $fishTypeId,
+            ':quantity' => $quantity
+        ]);
+
+        // Update main inventory (subtract the assigned quantity)
+        $stmt = $pdo->prepare("
+            UPDATE inventory SET quantity_kg = quantity_kg - ? 
+            WHERE fish_type_id = ?
+        ");
+        $stmt->execute([$quantity, $fishTypeId]);
+
+        $pdo->commit();
+        $_SESSION['message'] = "Inventory assigned successfully!";
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $_SESSION['error'] = $e->getMessage();
+    }
 
     header("Location: location_management.php");
     exit();
@@ -76,13 +109,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_location'])) {
 
     $locationId = $_POST['location_id'];
 
-    // First delete related inventory assignments
-    $stmt = $pdo->prepare("DELETE FROM location_inventory WHERE location_id = :location_id");
-    $stmt->execute([':location_id' => $locationId]);
+    try {
+        $pdo->beginTransaction();
 
-    // Then delete the location
-    $stmt = $pdo->prepare("DELETE FROM locations WHERE id = :id");
-    $stmt->execute([':id' => $locationId]);
+        // First get all inventory assignments to this location to return quantities
+        $stmt = $pdo->prepare("
+            SELECT fish_type_id, SUM(quantity) as total_quantity 
+            FROM location_inventory 
+            WHERE location_id = ?
+            GROUP BY fish_type_id
+        ");
+        $stmt->execute([$locationId]);
+        $assignments = $stmt->fetchAll();
+
+        // Return quantities to main inventory
+        foreach ($assignments as $assignment) {
+            $stmt = $pdo->prepare("
+                UPDATE inventory SET quantity_kg = quantity_kg + ? 
+                WHERE fish_type_id = ?
+            ");
+            $stmt->execute([$assignment['total_quantity'], $assignment['fish_type_id']]);
+        }
+
+        // Delete related inventory assignments
+        $stmt = $pdo->prepare("DELETE FROM location_inventory WHERE location_id = :location_id");
+        $stmt->execute([':location_id' => $locationId]);
+
+        // Then delete the location
+        $stmt = $pdo->prepare("DELETE FROM locations WHERE id = :id");
+        $stmt->execute([':id' => $locationId]);
+
+        $pdo->commit();
+        $_SESSION['message'] = "Location deleted successfully";
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $_SESSION['error'] = "Failed to delete location: " . $e->getMessage();
+    }
 
     header("Location: location_management.php");
     exit();
@@ -94,8 +156,13 @@ $locations = $pdo->query("SELECT * FROM locations ORDER BY name")->fetchAll();
 // Get all employees
 $employees = $pdo->query("SELECT * FROM users WHERE role = 'employee' ORDER BY username")->fetchAll();
 
-// Get all fish types
-$fishTypes = $pdo->query("SELECT * FROM fish_types ORDER BY name")->fetchAll();
+// Get all fish types with their available quantities
+$fishTypes = $pdo->query("
+    SELECT ft.*, i.quantity_kg as available_kg 
+    FROM fish_types ft
+    JOIN inventory i ON ft.id = i.fish_type_id
+    ORDER BY ft.name
+")->fetchAll();
 
 // Get current inventory assignments
 if (isAdmin()) {
@@ -221,6 +288,11 @@ if (isAdmin()) {
             background-color: #dc3545;
             color: #fff;
         }
+
+        .available-quantity {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
     </style>
 </head>
 
@@ -331,7 +403,10 @@ if (isAdmin()) {
                             <select class="form-select" id="fish_type_id" name="fish_type_id" required>
                                 <option value="">Select Fish Type</option>
                                 <?php foreach ($fishTypes as $fishType): ?>
-                                    <option value="<?= $fishType['id'] ?>"><?= htmlspecialchars($fishType['name']) ?></option>
+                                    <option value="<?= $fishType['id'] ?>" data-available="<?= $fishType['available_kg'] ?>">
+                                        <?= htmlspecialchars($fishType['name']) ?>
+                                        <span class="available-quantity">(Available: <?= number_format($fishType['available_kg'], 2) ?> kg)</span>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -341,6 +416,7 @@ if (isAdmin()) {
                                 <input type="number" step="0.01" min="0" class="form-control" id="quantity" name="quantity" required placeholder="0.00">
                                 <span class="input-group-text">kg</span>
                             </div>
+                            <small id="availableDisplay" class="text-muted"></small>
                         </div>
                         <div class="col-md-12 mt-3">
                             <button type="submit" name="add_assignment" class="btn btn-primary">
@@ -363,6 +439,7 @@ if (isAdmin()) {
                             <th>Employee</th>
                             <th>Fish Type</th>
                             <th>Quantity (kg)</th>
+                            <th>new added (kg)</th>
                             <th>Last Updated</th>
                             <th>Last Sale</th>
                             <th>Status</th>
@@ -376,6 +453,7 @@ if (isAdmin()) {
                                 <td><?= htmlspecialchars($assignment['employee_name']) ?></td>
                                 <td><?= htmlspecialchars($assignment['fish_type_name']) ?></td>
                                 <td><?= number_format($assignment['quantity'], 2) ?></td>
+                                <td><?= number_format($assignment['last_assigned_quantity'], 2) ?></td>
                                 <td><?= date('M j, Y g:i a', strtotime($assignment['last_updated'])) ?></td>
                                 <td><?= $assignment['last_sale_date'] ? date('M j, Y g:i a', strtotime($assignment['last_sale_date'])) : 'Never' ?></td>
                                 <td>
@@ -396,7 +474,7 @@ if (isAdmin()) {
                                             <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
                                             <input type="hidden" name="action" value="reject">
                                             <button type="submit" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to reject this assignment? The quantity will be returned.')">
+                                                onclick="return confirm('Are you sure you want to reject this assignment? The quantity will be returned to main inventory.')">
                                                 <i class="fas fa-times"></i> Reject
                                             </button>
                                         </form>
@@ -406,7 +484,7 @@ if (isAdmin()) {
                                         <form method="POST" action="delete_assignment.php" style="display: inline;">
                                             <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
                                             <button type="submit" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to delete this assignment?')">
+                                                onclick="return confirm('Are you sure you want to delete this assignment? The quantity will be returned to main inventory.')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -437,6 +515,34 @@ if (isAdmin()) {
                     }
                 });
             });
+
+            // Update available quantity display when fish type changes
+            const fishTypeSelect = document.getElementById('fish_type_id');
+            const quantityInput = document.getElementById('quantity');
+            const availableDisplay = document.getElementById('availableDisplay');
+
+            if (fishTypeSelect && quantityInput && availableDisplay) {
+                fishTypeSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const availableKg = parseFloat(selectedOption.dataset.available) || 0;
+
+                    availableDisplay.textContent = `Available: ${availableKg.toFixed(2)} kg`;
+                    quantityInput.max = availableKg;
+
+                    // Show warning if trying to assign more than available
+                    quantityInput.addEventListener('input', function() {
+                        const quantity = parseFloat(this.value) || 0;
+                        if (quantity > availableKg) {
+                            availableDisplay.innerHTML = `<span class="text-danger">Cannot assign more than available (${availableKg.toFixed(2)} kg)</span>`;
+                        } else {
+                            availableDisplay.textContent = `Available: ${availableKg.toFixed(2)} kg`;
+                        }
+                    });
+                });
+
+                // Trigger change event to initialize
+                fishTypeSelect.dispatchEvent(new Event('change'));
+            }
         });
     </script>
 </body>

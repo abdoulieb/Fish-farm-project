@@ -23,4 +23,6 @@ employee performance chart
 geolocation location to be adree,
 to add confirmed new stock quantity by employeed this should incated datetime 
 
+to add You must have accepted inventory assignments to make sales on top model
+
 
