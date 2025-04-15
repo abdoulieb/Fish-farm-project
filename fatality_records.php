@@ -9,8 +9,6 @@ if (!canEmployeeRecordFatality() && !isAdmin()) {
     exit();
 }
 
-// Rest of your existing code...
-
 $fishTypes = getAllFishTypes();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,6 +34,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Get fatality summary report using fingerlings_quantity from detailed_costs
+$reportStmt = $pdo->query("
+    SELECT 
+        ft.id as fish_type_id,
+        ft.name as fish_name,
+        COALESCE((
+            SELECT SUM(dc.fingerlings_quantity) 
+            FROM detailed_costs dc 
+            WHERE dc.fish_type_id = ft.id
+        ), 0) as total_fingerlings,
+        COALESCE(SUM(ff.quantity), 0) as total_dead,
+        (COALESCE((
+            SELECT SUM(dc.fingerlings_quantity) 
+            FROM detailed_costs dc 
+            WHERE dc.fish_type_id = ft.id
+        ), 0) - COALESCE(SUM(ff.quantity), 0)) as total_alive
+    FROM fish_types ft
+    LEFT JOIN fish_fatalities ff ON ft.id = ff.fish_type_id
+    GROUP BY ft.id, ft.name
+    ORDER BY ft.name
+");
+$fatalityReport = $reportStmt->fetchAll();
+
 include 'navbar.php';
 ?>
 
@@ -47,6 +68,47 @@ include 'navbar.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Record Fatality - Fish Inventory</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .report-card {
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+
+        .report-card .card-header {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+        }
+
+        .positive {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .negative {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .survival-high {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .survival-medium {
+            color: #ffc107;
+            font-weight: bold;
+        }
+
+        .survival-low {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
@@ -113,7 +175,52 @@ include 'navbar.php';
             </div>
         </form>
 
-        <div class="mt-5">
+        <!-- Fatality Report Card -->
+        <div class="card report-card mt-5">
+            <div class="card-header">
+                <h4 class="mb-0">Fish Survival Report</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Fish Type</th>
+                                <th>Total Fingerlings</th>
+                                <th>Total Dead</th>
+                                <th>Total Alive</th>
+                                <th>Survival Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($fatalityReport as $report):
+                                $survivalRate = $report['total_fingerlings'] > 0
+                                    ? round(($report['total_alive'] / $report['total_fingerlings']) * 100, 2)
+                                    : 0;
+                                $survivalClass = '';
+                                if ($survivalRate >= 80) {
+                                    $survivalClass = 'survival-high';
+                                } elseif ($survivalRate >= 50) {
+                                    $survivalClass = 'survival-medium';
+                                } else {
+                                    $survivalClass = 'survival-low';
+                                }
+                            ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($report['fish_name']) ?></td>
+                                    <td><?= number_format($report['total_fingerlings']) ?></td>
+                                    <td class="negative"><?= number_format($report['total_dead']) ?></td>
+                                    <td class="positive"><?= number_format($report['total_alive']) ?></td>
+                                    <td class="<?= $survivalClass ?>"><?= $survivalRate ?>%</td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
             <h4>Recent Fatalities</h4>
             <?php
             $stmt = $pdo->query("
