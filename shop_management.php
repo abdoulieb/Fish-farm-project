@@ -7,6 +7,9 @@ if (!isEmployee() && !isAdmin()) {
     exit();
 }
 
+// Get all locations
+$locations = $pdo->query("SELECT * FROM locations ORDER BY name")->fetchAll();
+
 // Get current employee's shop location if exists
 $currentShop = [];
 if (isset($_SESSION['user_id'])) {
@@ -38,6 +41,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } else {
                 echo json_encode(['success' => false, 'message' => 'Shop location not set up yet']);
             }
+        } catch (PDOException $e) {
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+        exit();
+    } elseif ($_POST['action'] === 'update_location') {
+        $locationId = $_POST['location_id'] ?? '';
+
+        try {
+            // Get location details
+            $stmt = $pdo->prepare("SELECT * FROM locations WHERE id = ?");
+            $stmt->execute([$locationId]);
+            $location = $stmt->fetch();
+
+            if (!$location) {
+                echo json_encode(['success' => false, 'message' => 'Invalid location selected']);
+                exit();
+            }
+
+            if ($currentShop) {
+                // Update existing shop location
+                $stmt = $pdo->prepare("
+                    UPDATE shop_locations 
+                    SET location_id = ?, location_name = ?, region = ?
+                    WHERE employee_id = ?
+                ");
+                $stmt->execute([
+                    $locationId,
+                    $location['name'],
+                    $location['address'],
+                    $_SESSION['user_id']
+                ]);
+            } else {
+                // Create new shop location
+                $stmt = $pdo->prepare("
+                    INSERT INTO shop_locations 
+                    (employee_id, location_id, location_name, region, opening_time, closing_time, is_open)
+                    VALUES (?, ?, ?, ?, '08:00', '17:00', 1)
+                ");
+                $stmt->execute([
+                    $_SESSION['user_id'],
+                    $locationId,
+                    $location['name'],
+                    $location['address']
+                ]);
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Location updated successfully!']);
         } catch (PDOException $e) {
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
@@ -81,6 +131,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     <div class="container mt-4">
         <h2>Manage Your Shop Location</h2>
+
+        <div class="real-time-update">
+            <h4>Update Shop Location</h4>
+            <form id="locationForm">
+                <div class="mb-3">
+                    <label for="location_id" class="form-label">Select Location</label>
+                    <select class="form-select" id="location_id" name="location_id" required>
+                        <option value="">Choose a location</option>
+                        <?php foreach ($locations as $location): ?>
+                            <option value="<?= $location['id'] ?>" <?= ($currentShop && $currentShop['location_id'] == $location['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($location['name']) ?> - <?= htmlspecialchars($location['address']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Location</button>
+                <div id="locationUpdateStatus" class="mt-2"></div>
+            </form>
+        </div>
 
         <div class="real-time-update">
             <h4>Update Shop Hours</h4>
