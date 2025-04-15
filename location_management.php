@@ -209,6 +209,52 @@ if (isAdmin()) {
     $inventoryAssignments->execute([$_SESSION['user_id']]);
     $inventoryAssignments = $inventoryAssignments->fetchAll();
 }
+
+// Handle assignment deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment'])) {
+    if (!isAdmin()) {
+        $_SESSION['error'] = "Only admins can delete assignments";
+        header("Location: location_management.php");
+        exit();
+    }
+
+    $assignmentId = $_POST['assignment_id'];
+    $fishTypeId = $_POST['fish_type_id'];
+    $quantity = floatval($_POST['quantity']);
+
+    try {
+        $pdo->beginTransaction();
+
+        // Verify the assignment exists and get its current quantity
+        $stmt = $pdo->prepare("SELECT quantity FROM location_inventory WHERE id = ?");
+        $stmt->execute([$assignmentId]);
+        $assignment = $stmt->fetch();
+
+        if (!$assignment) {
+            throw new Exception("Assignment not found");
+        }
+
+        // Return the FULL quantity to main inventory
+        $stmt = $pdo->prepare("
+            UPDATE inventory SET quantity_kg = quantity_kg + ? 
+            WHERE fish_type_id = ?
+        ");
+        $stmt->execute([$assignment['quantity'], $fishTypeId]);
+
+        // Delete the assignment
+        $stmt = $pdo->prepare("DELETE FROM location_inventory WHERE id = ?");
+        $stmt->execute([$assignmentId]);
+
+        $pdo->commit();
+        $_SESSION['message'] = "Assignment deleted successfully. " . number_format($assignment['quantity'], 2) . " kg returned to inventory.";
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $_SESSION['error'] = "Failed to delete assignment: " . $e->getMessage();
+    }
+
+    header("Location: location_management.php");
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -481,9 +527,11 @@ if (isAdmin()) {
                                     <?php endif; ?>
 
                                     <?php if (isAdmin()): ?>
-                                        <form method="POST" action="delete_assignment.php" style="display: inline;">
+                                        <form method="POST" style="display: inline;">
                                             <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger"
+                                            <input type="hidden" name="fish_type_id" value="<?= $assignment['fish_type_id'] ?>">
+                                            <input type="hidden" name="quantity" value="<?= $assignment['quantity'] ?>">
+                                            <button type="submit" name="delete_assignment" class="btn btn-sm btn-danger"
                                                 onclick="return confirm('Are you sure you want to delete this assignment? The quantity will be returned to main inventory.')">
                                                 <i class="fas fa-trash"></i>
                                             </button>

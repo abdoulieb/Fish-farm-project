@@ -582,13 +582,19 @@ $costHistory = $stmt->fetchAll();
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
+                                        <label for="smoker_ovon_quantity">Smoker oven quantity</label>
+                                        <input type="number" class="form-control" id="smoker_ovon_quantity" name="smoker_ovon_quantity" step="1" min="0">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
                                         <label for="smoker_ovon_unit_price">Smoker Ovon Unit Price (D)</label>
                                         <input type="number" class="form-control" id="smoker_ovon_unit_price" name="smoker_ovon_unit_price" step="0.01" min="0">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="smoker_ovon_total_cost">Smoker Ovon Total Cost (D)</label>
+                                        <label for="smoker_ovon_total_cost">Amount (D)</label>
                                         <input type="number" class="form-control" id="smoker_ovon_total_cost" name="smoker_ovon_total_cost" step="0.01" min="0">
                                     </div>
                                 </div>
