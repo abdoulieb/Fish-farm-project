@@ -108,12 +108,13 @@ foreach ($todaySales as $sale) {
 }
 
 // Get reconciliation reports for admin view or employee's own view
+// Get reconciliation reports for admin view or employee's own view
 if (isAdmin()) {
     $reconciliationReports = $pdo->prepare("
         SELECT cr.*, u.username as employee_name 
         FROM cash_reconciliations cr
         JOIN users u ON cr.employee_id = u.id
-        ORDER BY cr.report_date DESC
+        ORDER BY cr.report_date DESC, cr.submitted_at DESC
     ");
     $reconciliationReports->execute();
 } else {
@@ -121,8 +122,8 @@ if (isAdmin()) {
         SELECT cr.*, u.username as employee_name 
         FROM cash_reconciliations cr
         JOIN users u ON cr.employee_id = u.id
-        WHERE cr.employee_id = ?
-        ORDER BY cr.report_date DESC
+        WHERE cr.employee_id = ? AND cr.status = 'pending'
+        ORDER BY cr.report_date DESC, cr.submitted_at DESC
     ");
     $reconciliationReports->execute([$_SESSION['user_id']]);
 }
@@ -298,20 +299,48 @@ if (!isAdmin()) {
 }
 // Add this near the top of the file with other POST handling
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_reconciliation'])) {
-    if (!isAdmin()) {
-        $_SESSION['error'] = "Only admins can update reconciliations.";
-        header("Location: employee_sales.php");
-        exit();
-    }
-
     $reportId = intval($_POST['report_id']);
     $physicalCash = floatval($_POST['physical_cash']);
     $pettyCash = floatval($_POST['petty_cash']);
+
+    // Verify the report belongs to the employee (if not admin)
+    if (!isAdmin()) {
+        $checkReport = $pdo->prepare("SELECT id FROM cash_reconciliations WHERE id = ? AND employee_id = ? AND status = 'pending'");
+        $checkReport->execute([$reportId, $_SESSION['user_id']]);
+        if (!$checkReport->fetch()) {
+            $_SESSION['error'] = "You can only edit your own pending reconciliations.";
+            header("Location: employee_sales.php");
+            exit();
+        }
+    }
 
     if (updateReconciliation($reportId, $physicalCash, $pettyCash)) {
         $_SESSION['message'] = "Reconciliation updated successfully!";
     } else {
         $_SESSION['error'] = "Failed to update reconciliation.";
+    }
+
+    header("Location: employee_sales.php");
+    exit();
+}
+
+// Handle approval by admin
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_reconciliation'])) {
+    if (!isAdmin()) {
+        $_SESSION['error'] = "Only admins can approve reconciliations.";
+        header("Location: employee_sales.php");
+        exit();
+    }
+
+    $reportId = intval($_POST['report_id']);
+
+    try {
+        $stmt = $pdo->prepare("UPDATE cash_reconciliations SET status = 'approved' WHERE id = ?");
+        $stmt->execute([$reportId]);
+
+        $_SESSION['message'] = "Reconciliation approved successfully!";
+    } catch (PDOException $e) {
+        $_SESSION['error'] = "Error approving reconciliation: " . $e->getMessage();
     }
 
     header("Location: employee_sales.php");
@@ -796,7 +825,6 @@ include 'navbar.php';
                     </div>
                 </div>
             </div>
-
             <!-- Update the Reconciliation Reports Tab content with this: -->
             <div class="tab-pane fade" id="reconciliation" role="tabpanel">
                 <h4><?= isAdmin() ? 'All' : 'My' ?> Cash Reconciliation Reports</h4>
@@ -821,6 +849,14 @@ include 'navbar.php';
                                         </select>
                                     </div>
                                     <div class="col-md-4">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" name="status_filter">
+                                            <option value="">All Statuses</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="approved">Approved</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
                                         <label class="form-label">Date From</label>
                                         <input type="date" class="form-control" name="date_from">
                                     </div>
@@ -832,9 +868,18 @@ include 'navbar.php';
                                 <div class="mt-3">
                                     <button type="submit" class="btn btn-primary">Apply Filters</button>
                                     <button type="reset" class="btn btn-outline-secondary">Reset</button>
+                                    <button type="button" class="btn btn-success" onclick="window.print()">
+                                        <i class="bi bi-printer"></i> Print Reports
+                                    </button>
                                 </div>
                             </form>
                         </div>
+                    </div>
+                <?php else: ?>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-success" onclick="window.print()">
+                            <i class="bi bi-printer"></i> Print My Reports
+                        </button>
                     </div>
                 <?php endif; ?>
 
@@ -855,21 +900,19 @@ include 'navbar.php';
                                     <th>Total Cash (D)</th>
                                     <th>Deficit/Surplus (D)</th>
                                     <th>Status</th>
-                                    <?php if (isAdmin()): ?>
-                                        <th>Actions</th>
-                                    <?php endif; ?>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($allReconciliations as $report):
                                     $deficit = $report['deficit'];
-                                    $isProblem = $deficit < 0;
+                                    $isProblem = $deficit != 0; // Changed to show red for any discrepancy (positive or negative)
                                 ?>
                                     <tr>
                                         <?php if (isAdmin()): ?>
                                             <td><?= htmlspecialchars($report['employee_name']) ?></td>
                                         <?php endif; ?>
-                                        <td><?= date('M d, Y', strtotime($report['report_date'])) ?></td>
+                                        <td><?= date('M d, Y H:i', strtotime($report['report_date'])) ?></td>
                                         <td><?= number_format($report['expected_amount'], 2) ?></td>
                                         <td><?= number_format($report['physical_cash'], 2) ?></td>
                                         <td><?= number_format($report['petty_cash'], 2) ?></td>
@@ -878,22 +921,33 @@ include 'navbar.php';
                                             <?= number_format($deficit, 2) ?>
                                         </td>
                                         <td>
-                                            <?php if ($isProblem): ?>
-                                                <span class="badge bg-danger">Discrepancy</span>
+                                            <?php if ($report['status'] === 'pending'): ?>
+                                                <span class="badge bg-warning">Pending</span>
                                             <?php else: ?>
-                                                <span class="badge bg-success">Balanced</span>
+                                                <span class="badge bg-success">Approved</span>
                                             <?php endif; ?>
                                         </td>
-                                        <?php if (isAdmin()): ?>
-                                            <td>
+                                        <td>
+                                            <?php if ($report['status'] === 'pending'): ?>
                                                 <button class="btn btn-sm btn-primary edit-reconciliation"
                                                     data-id="<?= $report['id'] ?>"
                                                     data-physical="<?= $report['physical_cash'] ?>"
-                                                    data-petty="<?= $report['petty_cash'] ?>">
+                                                    data-petty="<?= $report['petty_cash'] ?>"
+                                                    data-expected="<?= $report['expected_amount'] ?>">
                                                     Edit
                                                 </button>
-                                            </td>
-                                        <?php endif; ?>
+                                                <?php if (isAdmin()): ?>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
+                                                        <button type="submit" name="approve_reconciliation" class="btn btn-sm btn-success">
+                                                            Approve
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">Locked</span>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -901,68 +955,107 @@ include 'navbar.php';
                     </div>
                 <?php endif; ?>
 
-                <!-- Edit Reconciliation Modal (for admin) -->
-                <?php if (isAdmin()): ?>
-                    <div class="modal fade" id="editReconciliationModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Edit Reconciliation Report</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <form method="POST" id="editReconciliationForm">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="report_id" id="report_id">
-                                        <div class="mb-3">
-                                            <label class="form-label">Physical Cash (D)</label>
-                                            <input type="number" step="0.01" class="form-control" name="physical_cash" id="edit_physical_cash" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Petty Cash (D)</label>
-                                            <input type="number" step="0.01" class="form-control" name="petty_cash" id="edit_petty_cash" required>
-                                        </div>
-                                        <div class="alert alert-info">
-                                            Expected Cash: D<span id="edit_expected_amount">0.00</span>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" name="update_reconciliation" class="btn btn-primary">Save Changes</button>
-                                    </div>
-                                </form>
+                <!-- Edit Reconciliation Modal -->
+                <div class="modal fade" id="editReconciliationModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Reconciliation Report</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
+                            <form method="POST" id="editReconciliationForm">
+                                <div class="modal-body">
+                                    <input type="hidden" name="report_id" id="report_id">
+                                    <div class="mb-3">
+                                        <label class="form-label">Physical Cash (D)</label>
+                                        <input type="number" step="0.01" class="form-control" name="physical_cash" id="edit_physical_cash" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Petty Cash (D)</label>
+                                        <input type="number" step="0.01" class="form-control" name="petty_cash" id="edit_petty_cash" required>
+                                    </div>
+                                    <div class="alert alert-info">
+                                        Expected Cash: D<span id="edit_expected_amount">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" name="update_reconciliation" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
+                </div>
 
-                    <script>
-                        // Add this to your existing JavaScript
-                        document.addEventListener('DOMContentLoaded', function() {
-                            // Edit reconciliation modal
-                            const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
+                <!-- Print Styles -->
+                <style media="print">
+                    body * {
+                        visibility: hidden;
+                    }
 
-                            document.querySelectorAll('.edit-reconciliation').forEach(button => {
-                                button.addEventListener('click', function() {
-                                    const reportId = this.dataset.id;
-                                    const physicalCash = this.dataset.physical;
-                                    const pettyCash = this.dataset.petty;
+                    #reconciliation,
+                    #reconciliation * {
+                        visibility: visible;
+                    }
 
-                                    // Find the row to get expected amount
-                                    const row = this.closest('tr');
-                                    const expectedAmount = row.querySelector('td:nth-child(3)').textContent.replace(/[^0-9.]/g, '');
+                    #reconciliation {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
 
-                                    // Set form values
-                                    document.getElementById('report_id').value = reportId;
-                                    document.getElementById('edit_physical_cash').value = physicalCash;
-                                    document.getElementById('edit_petty_cash').value = pettyCash;
-                                    document.getElementById('edit_expected_amount').textContent = expectedAmount;
+                    .no-print {
+                        display: none !important;
+                    }
 
-                                    editModal.show();
-                                });
-                            });
-                        });
-                    </script>
-                <?php endif; ?>
+                    table {
+                        width: 100% !important;
+                    }
+                </style>
             </div>
+
+            <!-- Add this to your existing JavaScript -->
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Edit reconciliation modal
+                    const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
+
+                    document.querySelectorAll('.edit-reconciliation').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const reportId = this.dataset.id;
+                            const physicalCash = this.dataset.physical;
+                            const pettyCash = this.dataset.petty;
+                            const expectedAmount = this.dataset.expected;
+
+                            // Set form values
+                            document.getElementById('report_id').value = reportId;
+                            document.getElementById('edit_physical_cash').value = physicalCash;
+                            document.getElementById('edit_petty_cash').value = pettyCash;
+                            document.getElementById('edit_expected_amount').textContent = parseFloat(expectedAmount).toFixed(2);
+
+                            editModal.show();
+                        });
+                    });
+
+                    // Filter functionality for reconciliation reports
+                    const filterForm = document.getElementById('reconciliationFilter');
+                    if (filterForm) {
+                        filterForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const formData = new FormData(this);
+                            const params = new URLSearchParams();
+
+                            for (const [key, value] of formData.entries()) {
+                                if (value) params.append(key, value);
+                            }
+
+                            window.location.href = `employee_sales.php?${params.toString()}`;
+                        });
+                    }
+                });
+            </script>
+
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>

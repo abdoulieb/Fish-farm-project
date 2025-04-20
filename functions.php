@@ -235,10 +235,15 @@ function updateReconciliation($id, $physicalCash, $pettyCash)
     try {
         $pdo->beginTransaction();
 
-        // Get the original reconciliation to calculate the difference
+        // Get the original reconciliation to verify status and calculate difference
         $original = getReconciliationById($id);
         if (!$original) {
             throw new Exception("Reconciliation not found.");
+        }
+
+        // Check if report is already approved
+        if ($original['status'] === 'approved') {
+            throw new Exception("Cannot update an approved reconciliation.");
         }
 
         // Calculate new values
@@ -248,9 +253,13 @@ function updateReconciliation($id, $physicalCash, $pettyCash)
         $stmt = $pdo->prepare("
             UPDATE cash_reconciliations 
             SET physical_cash = ?, petty_cash = ?, deficit = ?, total_cash = ?
-            WHERE id = ?
+            WHERE id = ? AND status = 'pending'
         ");
         $stmt->execute([$physicalCash, $pettyCash, $deficit, $totalCash, $id]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new Exception("Failed to update reconciliation - it may have been approved.");
+        }
 
         $pdo->commit();
         return true;
@@ -271,5 +280,7 @@ function getPendingAssignmentsCount($employeeId)
     $stmt->execute([$employeeId]);
     return $stmt->fetch()['count'];
 }
+
+
 
 // Add to auth.php or functions.php
