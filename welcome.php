@@ -670,7 +670,7 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
                                 <?php if ($available > 0): ?>
                                     <a href="login.php" class="btn btn-primary mt-4 w-100">Order Now</a>
                                 <?php else: ?>
-                                    <button class="btn btn-secondary mt-4 w-100" disabled>Notify When Available</button>
+                                    <button class="btn btn-secondary mt-4 w-100" disabled>Out of Stock</button>
                                 <?php endif; ?>
                             </div>
                         </div>

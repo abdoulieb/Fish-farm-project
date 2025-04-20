@@ -1,12 +1,27 @@
 <?php
 require_once 'config.php';
-
-function registerUser($username, $password, $email)
+function registerUser($username, $password, $email, $phone, $address, $full_name, $role = 'customer')
 {
     global $pdo;
+
+    // Hash the password
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)");
-    return $stmt->execute([$username, $hashedPassword, $email]);
+
+    // Prepare the SQL statement
+    $stmt = $pdo->prepare("INSERT INTO users 
+                          (username, password, email, full_name, phone, address, role) 
+                          VALUES (?, ?, ?, ?, ?, ?, ?)");
+
+    // Execute the statement with parameters
+    return $stmt->execute([
+        $username,
+        $hashedPassword,
+        $email,
+        $full_name,
+        $phone,
+        $address,
+        $role
+    ]);
 }
 
 function loginUser($username, $password)

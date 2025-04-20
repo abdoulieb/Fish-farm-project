@@ -262,6 +262,9 @@ $contacts = $pdo->query($contactsQuery)->fetchAll();
                                     <th>Order ID</th>
                                     <th>Customer</th>
                                     <th>Date</th>
+                                    <th>phone</th>
+                                    <th>Address</th>
+                                    <th>email</th>
                                     <th>Total</th>
                                     <th>Status</th>
                                     <th>Action</th>
@@ -273,6 +276,10 @@ $contacts = $pdo->query($contactsQuery)->fetchAll();
                                         <td>#<?= $order['id'] ?></td>
                                         <td><?= htmlspecialchars($order['username']) ?></td>
                                         <td><?= date('M d, Y H:i', strtotime($order['order_date'])) ?></td>
+                                        <td><?= htmlspecialchars($order['phone'] ?? $pdo->query("SELECT phone FROM users WHERE id = {$order['user_id']}")->fetchColumn() ?? 'N/A') ?></td>
+                                        <td><?= htmlspecialchars($order['address'] ?? $pdo->query("SELECT address FROM users WHERE id = {$order['user_id']}")->fetchColumn() ?? 'N/A') ?></td>
+                                        <td><?= htmlspecialchars($order['email'] ?? $pdo->query("SELECT email FROM users WHERE id = {$order['user_id']}")->fetchColumn() ?? 'N/A') ?></td>
+
                                         <td>D<?= number_format($order['total_amount'], 2) ?></td>
                                         <td>
                                             <span class="badge 

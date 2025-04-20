@@ -85,7 +85,7 @@ function getOrders($userId = null)
 {
     global $pdo;
     if ($userId) {
-        $stmt = $pdo->prepare("SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.user_id = ? ORDER BY o.order_date DESC");
+        $stmt = $pdo->prepare("SELECT o.*, u.username,u.phone,u.address,u.email FROM orders o JOIN users u ON o.user_id = u.id WHERE o.user_id = ? ORDER BY o.order_date DESC");
         $stmt->execute([$userId]);
     } else {
         $stmt = $pdo->query("SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.order_date DESC");
