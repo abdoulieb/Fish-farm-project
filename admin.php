@@ -51,6 +51,19 @@ $assignments = $pdo->query("
     JOIN fish_types ft ON li.fish_type_id = ft.id
     ORDER BY l.name, u.username
 ")->fetchAll();
+
+// Contact submissions query
+$statusFilter = $_GET['status'] ?? 'all';
+$contactsQuery = "SELECT * FROM contact_submissions WHERE 1=1";
+
+if ($statusFilter === 'unread') {
+    $contactsQuery .= " AND (status IS NULL OR status != 'responded')";
+} elseif ($statusFilter === 'responded') {
+    $contactsQuery .= " AND status = 'responded'";
+}
+
+$contactsQuery .= " ORDER BY submitted_at DESC";
+$contacts = $pdo->query($contactsQuery)->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -60,6 +73,7 @@ $assignments = $pdo->query("
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Fish Inventory Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .tab-content {
             padding: 20px 0;
@@ -83,6 +97,10 @@ $assignments = $pdo->query("
 
         .nav-tabs {
             margin-top: 20px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
         }
     </style>
 </head>
@@ -114,6 +132,16 @@ $assignments = $pdo->query("
                     <li class="nav-item">
                         <a class="nav-link" href="employee_performance.php">Employee Performance</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contacts" data-bs-toggle="tab">
+                            Messages
+                            <?php
+                            $unreadCount = $pdo->query("SELECT COUNT(*) FROM contact_submissions WHERE status IS NULL OR status != 'responded'")->fetchColumn();
+                            if ($unreadCount > 0): ?>
+                                <span class="badge bg-danger"><?= $unreadCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
@@ -132,16 +160,18 @@ $assignments = $pdo->query("
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab">Inventory</button>
             </li>
+
             <li class="nav-item" role="presentation">
                 <a class="nav-link" href="location_management.php">Location Management</a>
             </li>
-
-
             <?php if (isAdmin()): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="manage_employees.php">Manage Employees</a>
                 </li>
             <?php endif; ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#contacts" type="button" role="tab">Customer Messages</button>
+            </li>
         </ul>
 
         <!-- Tab Content -->
@@ -207,7 +237,6 @@ $assignments = $pdo->query("
                                                         data-id="<?= $fish['id'] ?>" data-name="<?= htmlspecialchars($fish['name']) ?>"
                                                         data-description="<?= htmlspecialchars($fish['description']) ?>"
                                                         data-price="<?= $fish['price_per_kg'] ?>">
-
                                                         Edit
                                                     </button>
                                                 </td>
@@ -262,7 +291,6 @@ $assignments = $pdo->query("
                                                     Change Status
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <!-- Convert all status change links to forms for POST requests -->
                                                     <li>
                                                         <form method="POST" action="update_order_status.php" style="display:inline;">
                                                             <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
@@ -294,7 +322,6 @@ $assignments = $pdo->query("
                                                 </ul>
                                             </div>
 
-                                            <!-- Quick Cancel Button for Pending Orders -->
                                             <?php if ($order['status'] === 'pending'): ?>
                                                 <form method="POST" action="update_order_status.php" style="display:inline;">
                                                     <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
@@ -309,266 +336,427 @@ $assignments = $pdo->query("
                         </table>
                     </div>
                 </div>
-                <!-- Location Management Tab -->
-                <div class="tab-pane fade" id="locations" role="tabpanel">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5>Location Inventory Assignment</h5>
+            </div>
+
+            <!-- Contacts Tab -->
+            <div class="tab-pane fade" id="contacts" role="tabpanel">
+                <div class="card mt-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5>Customer Messages</h5>
+                        <div>
+                            <span class="badge bg-light text-dark">
+                                Total: <?= count($contacts) ?>
+                                <?php if ($statusFilter === 'unread'): ?>
+                                    | Unread: <?= $pdo->query("SELECT COUNT(*) FROM contact_submissions WHERE status IS NULL OR status != 'responded'")->fetchColumn() ?>
+                                <?php endif; ?>
+                            </span>
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <form method="POST" action="update_location_inventory.php">
-                                        <div class="mb-3">
-                                            <label for="locationSelect" class="form-label">Select Location</label>
-                                            <select class="form-select" id="locationSelect" name="location_id" required>
-                                                <?php foreach ($locations as $location): ?>
-                                                    <option value="<?= $location['id'] ?>"><?= htmlspecialchars($location['name']) ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="employeeSelect" class="form-label">Select Employee</label>
-                                            <select class="form-select" id="employeeSelect" name="employee_id" required>
-                                                <?php foreach ($employees as $employee): ?>
-                                                    <option value="<?= $employee['id'] ?>"><?= htmlspecialchars($employee['username']) ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <?php foreach ($fishTypes as $fish): ?>
-                                            <div class="mb-3">
-                                                <label for="fish_<?= $fish['id'] ?>" class="form-label"><?= htmlspecialchars($fish['name']) ?> (kg)</label>
-                                                <input type="number" step="0.1" min="0" class="form-control"
-                                                    id="fish_<?= $fish['id'] ?>" name="fish[<?= $fish['id'] ?>]"
-                                                    placeholder="Enter quantity">
-                                            </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="btn-group">
+                                <a href="?status=all" class="btn btn-outline-primary <?= $statusFilter === 'all' ? 'active' : '' ?>">All Messages</a>
+                                <a href="?status=unread" class="btn btn-outline-primary <?= $statusFilter === 'unread' ? 'active' : '' ?>">
+                                    Unread
+                                    <?php
+                                    $unreadCount = $pdo->query("SELECT COUNT(*) FROM contact_submissions WHERE status IS NULL OR status != 'responded'")->fetchColumn();
+                                    if ($unreadCount > 0): ?>
+                                        <span class="badge bg-danger ms-1"><?= $unreadCount ?></span>
+                                    <?php endif; ?>
+                                </a>
+                                <a href="?status=responded" class="btn btn-outline-primary <?= $statusFilter === 'responded' ? 'active' : '' ?>">Responded</a>
+                            </div>
+                        </div>
+
+                        <?php if (empty($contacts)): ?>
+                            <div class="alert alert-info">No messages found.</div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Contact</th>
+                                            <th>Subject</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($contacts as $contact): ?>
+                                            <tr class="<?= ($contact['status'] !== 'responded') ? 'table-warning' : '' ?>">
+                                                <td><?= $contact['id'] ?></td>
+                                                <td><?= htmlspecialchars($contact['name']) ?></td>
+                                                <td>
+                                                    <div><a href="mailto:<?= htmlspecialchars($contact['email']) ?>"><?= htmlspecialchars($contact['email']) ?></a></div>
+                                                    <?php if (!empty($contact['phone'])): ?>
+                                                        <div><a href="tel:<?= htmlspecialchars($contact['phone']) ?>"><?= htmlspecialchars($contact['phone']) ?></a></div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?= htmlspecialchars(ucfirst($contact['subject'])) ?></td>
+                                                <td>
+                                                    <?= date('M j, Y', strtotime($contact['submitted_at'])) ?><br>
+                                                    <small class="text-muted"><?= date('h:i A', strtotime($contact['submitted_at'])) ?></small>
+                                                </td>
+                                                <td>
+                                                    <?php if ($contact['status'] === 'responded'): ?>
+                                                        <span class="badge bg-success">Responded</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark">Pending</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex gap-2">
+                                                        <button class="btn btn-sm btn-primary view-message-btn"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#messageDetailModal"
+                                                            data-id="<?= $contact['id'] ?>"
+                                                            data-name="<?= htmlspecialchars($contact['name']) ?>"
+                                                            data-email="<?= htmlspecialchars($contact['email']) ?>"
+                                                            data-phone="<?= htmlspecialchars($contact['phone']) ?>"
+                                                            data-subject="<?= htmlspecialchars($contact['subject']) ?>"
+                                                            data-message="<?= htmlspecialchars($contact['message']) ?>"
+                                                            data-status="<?= $contact['status'] ?>"
+                                                            data-date="<?= date('F j, Y \a\t h:i A', strtotime($contact['submitted_at'])) ?>">
+                                                            <i class="fas fa-eye"></i> View
+                                                        </button>
+
+                                                        <?php if ($contact['status'] !== 'responded'): ?>
+                                                            <form method="post" action="update_contact_status.php" class="d-inline">
+                                                                <input type="hidden" name="id" value="<?= $contact['id'] ?>">
+                                                                <button type="submit" class="btn btn-sm btn-success">
+                                                                    <i class="fas fa-check"></i> Mark as Responded
+                                                                </button>
+                                                            </form>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         <?php endforeach; ?>
-                                        <button type="submit" class="btn btn-primary">Assign Inventory</button>
-                                    </form>
-                                </div>
-                                <div class="col-md-6">
-                                    <h5>Current Assignments</h5>
-                                    <div class="table-responsive">
-                                        <table class="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Location</th>
-                                                    <th>Employee</th>
-                                                    <th>Fish Type</th>
-                                                    <th>Quantity (kg)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($assignments as $assignment): ?>
-                                                    <tr>
-                                                        <td><?= htmlspecialchars($assignment['location_name']) ?></td>
-                                                        <td><?= htmlspecialchars($assignment['username']) ?></td>
-                                                        <td><?= htmlspecialchars($assignment['fish_name']) ?></td>
-                                                        <td><?= number_format($assignment['quantity'], 2) ?></td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Update Inventory Modal -->
-                <div class="modal fade" id="updateInventoryModal" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Update Inventory</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <!-- Message Detail Modal -->
+        <div class="modal fade" id="messageDetailModal" tabindex="-1" aria-labelledby="messageDetailModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="messageDetailModalLabel">Message Details</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h6>Customer Information</h6>
+                                <p><strong>Name:</strong> <span id="detailName"></span></p>
+                                <p><strong>Email:</strong> <span id="detailEmail"></span></p>
+                                <p><strong>Phone:</strong> <span id="detailPhone"></span></p>
                             </div>
-                            <form action="update_inventory.php" method="POST">
-                                <div class="modal-body">
-                                    <input type="hidden" id="inventoryFishId" name="fish_type_id">
-                                    <div class="mb-3">
-                                        <label for="inventoryFishName" class="form-label">Fish Type</label>
-                                        <input type="text" class="form-control" id="inventoryFishName" readonly>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="inventoryQuantity" class="form-label">Quantity (kg)</label>
-                                        <input type="number" step="0.1" min="0" class="form-control" id="inventoryQuantity" name="quantity" required>
-                                    </div>
+                            <div class="col-md-6">
+                                <h6>Message Details</h6>
+                                <p><strong>Subject:</strong> <span id="detailSubject"></span></p>
+                                <p><strong>Date:</strong> <span id="detailDate"></span></p>
+                                <p><strong>Status:</strong> <span id="detailStatus" class="badge"></span></p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6>Message Content</h6>
+                            <div class="card">
+                                <div class="card-body" id="detailMessage"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6>Admin Response</h6>
+                            <form id="responseForm" method="post" action="update_contact_status.php">
+                                <input type="hidden" name="id" id="responseId">
+                                <div class="mb-3">
+                                    <textarea class="form-control" name="admin_notes" id="adminNotes" rows="3" placeholder="Add response notes..."></textarea>
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-primary">Update</button>
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <a href="#" id="emailLink" class="btn btn-primary me-2">
+                                            <i class="fas fa-envelope"></i> Reply via Email
+                                        </a>
+                                        <a href="#" id="callLink" class="btn btn-success">
+                                            <i class="fas fa-phone"></i> Call Customer
+                                        </a>
+                                    </div>
+                                    <button type="submit" name="mark_responded" class="btn btn-success">
+                                        <i class="fas fa-check"></i> Mark as Responded
+                                    </button>
                                 </div>
                             </form>
                         </div>
                     </div>
-                </div>
-
-                <!-- Edit Fish Type Modal -->
-                <div class="modal fade" id="editFishModal" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Edit Fish Type</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <form action="update_fish_type.php" method="POST" enctype="multipart/form-data">
-                                <div class="modal-body">
-                                    <input type="hidden" id="editFishId" name="id">
-                                    <input type="hidden" id="editCurrentImage" name="current_image">
-                                    <div class="mb-3">
-                                        <label for="editFishName" class="form-label">Name</label>
-                                        <input type="text" class="form-control" id="editFishName" name="name" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="editFishDescription" class="form-label">Description</label>
-                                        <textarea class="form-control" id="editFishDescription" name="description" rows="3"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="editFishPrice" class="form-label">Price per kg</label>
-                                        <input type="number" step="0.01" min="0" class="form-control" id="editFishPrice" name="price" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Current Image</label>
-                                        <div id="editFishImagePreview" class="mb-2"></div>
-                                        <label for="editFishImage" class="form-label">Change Image</label>
-                                        <input type="file" class="form-control" id="editFishImage" name="image_path" accept="image/*">
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                                </div>
-                            </form>
-                        </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
-                <!-- Add Fish Type Modal -->
-                <div class="modal fade" id="addFishModal" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Add New Fish Type</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <form action="add_fish_type.php" method="POST" enctype="multipart/form-data">
-                                <div class="modal-body">
-                                    <div class="mb-3">
-                                        <label for="addFishName" class="form-label">Name</label>
-                                        <input type="text" class="form-control" id="addFishName" name="name" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="addFishDescription" class="form-label">Description</label>
-                                        <textarea class="form-control" id="addFishDescription" name="description" rows="3"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="addFishPrice" class="form-label">Price per kg</label>
-                                        <input type="number" step="0.01" min="0" class="form-control" id="addFishPrice" name="price" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="addFishInitialQuantity" class="form-label">Initial Quantity (kg)</label>
-                                        <input type="number" step="0.1" min="0" class="form-control" id="addFishInitialQuantity" name="initial_quantity" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="addFishimage" class="form-label">image</label>
-                                        <input type="file" class="form-control" id="addFishimage" name="image_paths" accept="image/*" required>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-primary">Add Fish Type</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+            </div>
+        </div>
 
-                <!-- Order Details Modal -->
-                <div class="modal fade" id="orderDetailsModal" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Order Details</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <!-- Update Inventory Modal -->
+        <div class="modal fade" id="updateInventoryModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Update Inventory</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="update_inventory.php" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" id="inventoryFishId" name="fish_type_id">
+                            <div class="mb-3">
+                                <label for="inventoryFishName" class="form-label">Fish Type</label>
+                                <input type="text" class="form-control" id="inventoryFishName" readonly>
                             </div>
-                            <div class="modal-body" id="orderDetailsContent">
-                                Loading...
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <div class="mb-3">
+                                <label for="inventoryQuantity" class="form-label">Quantity (kg)</label>
+                                <input type="number" step="0.1" min="0" class="form-control" id="inventoryQuantity" name="quantity" required>
                             </div>
                         </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Fish Type Modal -->
+        <div class="modal fade" id="editFishModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Fish Type</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="update_fish_type.php" method="POST" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <input type="hidden" id="editFishId" name="id">
+                            <input type="hidden" id="editCurrentImage" name="current_image">
+                            <div class="mb-3">
+                                <label for="editFishName" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="editFishName" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editFishDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="editFishDescription" name="description" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editFishPrice" class="form-label">Price per kg</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="editFishPrice" name="price" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Current Image</label>
+                                <div id="editFishImagePreview" class="mb-2"></div>
+                                <label for="editFishImage" class="form-label">Change Image</label>
+                                <input type="file" class="form-control" id="editFishImage" name="image_path" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Fish Type Modal -->
+        <div class="modal fade" id="addFishModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Fish Type</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="add_fish_type.php" method="POST" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="addFishName" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="addFishName" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="addFishDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="addFishDescription" name="description" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="addFishPrice" class="form-label">Price per kg</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="addFishPrice" name="price" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="addFishInitialQuantity" class="form-label">Initial Quantity (kg)</label>
+                                <input type="number" step="0.1" min="0" class="form-control" id="addFishInitialQuantity" name="initial_quantity" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="addFishimage" class="form-label">image</label>
+                                <input type="file" class="form-control" id="addFishimage" name="image_paths" accept="image/*" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Fish Type</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Details Modal -->
+        <div class="modal fade" id="orderDetailsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Order Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="orderDetailsContent">
+                        Loading...
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-                <script>
-                    // Initialize all modals
-                    document.getElementById('updateInventoryModal').addEventListener('show.bs.modal', function(event) {
-                        var button = event.relatedTarget;
-                        var fishId = button.getAttribute('data-id');
-                        var fishName = button.getAttribute('data-name');
-                        var quantity = button.getAttribute('data-quantity');
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Initialize all modals
+            document.getElementById('updateInventoryModal').addEventListener('show.bs.modal', function(event) {
+                var button = event.relatedTarget;
+                var fishId = button.getAttribute('data-id');
+                var fishName = button.getAttribute('data-name');
+                var quantity = button.getAttribute('data-quantity');
 
-                        var modal = this;
-                        modal.querySelector('#inventoryFishId').value = fishId;
-                        modal.querySelector('#inventoryFishName').value = fishName;
-                        modal.querySelector('#inventoryQuantity').value = quantity;
+                var modal = this;
+                modal.querySelector('#inventoryFishId').value = fishId;
+                modal.querySelector('#inventoryFishName').value = fishName;
+                modal.querySelector('#inventoryQuantity').value = quantity;
+            });
+
+            document.getElementById('editFishModal').addEventListener('show.bs.modal', function(event) {
+                var button = event.relatedTarget;
+                var fishId = button.getAttribute('data-id');
+                var fishName = button.getAttribute('data-name');
+                var description = button.getAttribute('data-description');
+                var price = button.getAttribute('data-price');
+                var imagePath = button.getAttribute('data-image');
+
+                var modal = this;
+                modal.querySelector('#editFishId').value = fishId;
+                modal.querySelector('#editFishName').value = fishName;
+                modal.querySelector('#editFishDescription').value = description;
+                modal.querySelector('#editFishPrice').value = price;
+                modal.querySelector('#editCurrentImage').value = imagePath;
+
+                var imagePreview = modal.querySelector('#editFishImagePreview');
+                if (imagePath) {
+                    imagePreview.innerHTML = `<img src="${imagePath}" class="img-fluid" style="max-height: 150px;">`;
+                } else {
+                    imagePreview.innerHTML = '<p>No image available</p>';
+                }
+            });
+
+            document.getElementById('orderDetailsModal').addEventListener('show.bs.modal', function(event) {
+                var button = event.relatedTarget;
+                var orderId = button.getAttribute('data-id');
+
+                var modal = this;
+                var content = modal.querySelector('#orderDetailsContent');
+                content.innerHTML = 'Loading...';
+
+                // Fetch order details via AJAX
+                fetch('get_order_details.php?order_id=' + orderId)
+                    .then(response => response.text())
+                    .then(data => {
+                        content.innerHTML = data;
+                    })
+                    .catch(error => {
+                        content.innerHTML = 'Error loading order details.';
                     });
+            });
 
-                    document.getElementById('editFishModal').addEventListener('show.bs.modal', function(event) {
-                        var button = event.relatedTarget;
-                        var fishId = button.getAttribute('data-id');
-                        var fishName = button.getAttribute('data-name');
-                        var description = button.getAttribute('data-description');
-                        var price = button.getAttribute('data-price');
-                        var imagePath = button.getAttribute('data-image');
+            // Tab functionality
+            const triggerTabList = [].slice.call(document.querySelectorAll('#adminTabs button'));
+            triggerTabList.forEach(function(triggerEl) {
+                const tabTrigger = new bootstrap.Tab(triggerEl);
+                triggerEl.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    tabTrigger.show();
+                });
+            });
 
-                        var modal = this;
-                        modal.querySelector('#editFishId').value = fishId;
-                        modal.querySelector('#editFishName').value = fishName;
-                        modal.querySelector('#editFishDescription').value = description;
-                        modal.querySelector('#editFishPrice').value = price;
-                        modal.querySelector('#editCurrentImage').value = imagePath;
+            // Message Detail Modal
+            document.getElementById('messageDetailModal').addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const modal = this;
 
-                        var imagePreview = modal.querySelector('#editFishImagePreview');
-                        if (imagePath) {
-                            imagePreview.innerHTML = `<img src="${imagePath}" class="img-fluid" style="max-height: 150px;">`;
-                        } else {
-                            imagePreview.innerHTML = '<p>No image available</p>';
+                // Set message details
+                modal.querySelector('#detailName').textContent = button.dataset.name;
+                modal.querySelector('#detailEmail').textContent = button.dataset.email;
+                modal.querySelector('#detailPhone').textContent = button.dataset.phone || 'Not provided';
+                modal.querySelector('#detailSubject').textContent = button.dataset.subject;
+                modal.querySelector('#detailMessage').textContent = button.dataset.message;
+                modal.querySelector('#detailDate').textContent = button.dataset.date;
+
+                // Set status badge
+                const statusBadge = modal.querySelector('#detailStatus');
+                statusBadge.textContent = button.dataset.status === 'responded' ? 'Responded' : 'Pending';
+                statusBadge.className = 'badge ' + (button.dataset.status === 'responded' ? 'bg-success' : 'bg-warning');
+
+                // Set form values
+                modal.querySelector('#responseId').value = button.dataset.id;
+
+                // Set up action links
+                modal.querySelector('#emailLink').href = `mailto:${button.dataset.email}?subject=Re: ${encodeURIComponent(button.dataset.subject)}`;
+                if (button.dataset.phone) {
+                    modal.querySelector('#callLink').href = `tel:${button.dataset.phone}`;
+                } else {
+                    modal.querySelector('#callLink').classList.add('disabled');
+                }
+
+                // Hide mark as responded button if already responded
+                if (button.dataset.status === 'responded') {
+                    modal.querySelector('button[name="mark_responded"]').style.display = 'none';
+                }
+            });
+
+            // Refresh unread count badge periodically
+            function updateUnreadCount() {
+                fetch('get_unread_count.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        const badge = document.querySelector('.nav-link[href="#contacts"] .badge');
+                        if (data.count > 0) {
+                            if (!badge) {
+                                const link = document.querySelector('.nav-link[href="#contacts"]');
+                                link.innerHTML += ` <span class="badge bg-danger">${data.count}</span>`;
+                            } else {
+                                badge.textContent = data.count;
+                            }
+                        } else if (badge) {
+                            badge.remove();
                         }
                     });
+            }
 
-                    document.getElementById('orderDetailsModal').addEventListener('show.bs.modal', function(event) {
-                        var button = event.relatedTarget;
-                        var orderId = button.getAttribute('data-id');
-
-                        var modal = this;
-                        var content = modal.querySelector('#orderDetailsContent');
-                        content.innerHTML = 'Loading...';
-
-                        // Fetch order details via AJAX
-                        fetch('get_order_details.php?order_id=' + orderId)
-                            .then(response => response.text())
-                            .then(data => {
-                                content.innerHTML = data;
-                            })
-                            .catch(error => {
-                                content.innerHTML = 'Error loading order details.';
-                            });
-                    });
-
-                    // Tab functionality
-                    const triggerTabList = [].slice.call(document.querySelectorAll('#adminTabs button'));
-                    triggerTabList.forEach(function(triggerEl) {
-                        const tabTrigger = new bootstrap.Tab(triggerEl);
-                        triggerEl.addEventListener('click', function(event) {
-                            event.preventDefault();
-                            tabTrigger.show();
-                        });
-                    });
-                </script>
+            setInterval(updateUnreadCount, 30000); // Update every 30 seconds
+            updateUnreadCount(); // Initial update
+        </script>
+    </div>
 </body>
 
 </html>

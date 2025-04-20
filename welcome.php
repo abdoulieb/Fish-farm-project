@@ -344,6 +344,38 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
             display: block;
             margin: 0 auto;
         }
+
+        /* Add to the existing styles */
+        .contact-form-card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .form-floating label {
+            color: #6c757d;
+            padding: 1rem 1.25rem;
+        }
+
+        .form-floating>.form-control:focus~label,
+        .form-floating>.form-control:not(:placeholder-shown)~label,
+        .form-floating>.form-select~label {
+            opacity: 0.8;
+            transform: scale(0.85) translateY(-0.7rem) translateX(0.15rem);
+        }
+
+        .form-control,
+        .form-select {
+            padding: 1rem 1.25rem;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        }
     </style>
 </head>
 
@@ -502,93 +534,95 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
     </section>
 
     <!-- Video Showcase Section -->
-<section class="py-5 bg-light" id="videos">
-    <div class="container">
-        <h2 class="text-center section-title">Our Work Showcase</h2>
-        <p class="text-center mb-5 lead">See our fish farming process and operations</p>
-        
-        <?php 
-        function getFeaturedVideo() {
-            global $pdo;
-            $stmt = $pdo->query("SELECT * FROM videos WHERE is_featured = 1 LIMIT 1");
-            return $stmt->fetch();
-        }
+    <section class="py-5 bg-light" id="videos">
+        <div class="container">
+            <h2 class="text-center section-title">Our Work Showcase</h2>
+            <p class="text-center mb-5 lead">See our fish farming process and operations</p>
 
-        function getAllVideos() {
-            global $pdo;
-            $stmt = $pdo->query("SELECT * FROM videos");
-            return $stmt->fetchAll();
-        }
+            <?php
+            function getFeaturedVideo()
+            {
+                global $pdo;
+                $stmt = $pdo->query("SELECT * FROM videos WHERE is_featured = 1 LIMIT 1");
+                return $stmt->fetch();
+            }
 
-        $featuredVideo = getFeaturedVideo();
-        $allVideos = getAllVideos();
-        ?>
-        
-        <!-- Featured Video -->
-        <?php if ($featuredVideo): ?>
-        <div class="row mb-5">
-            <div class="col-lg-8 mx-auto">
-                <div class="card shadow">
-                    <div class="card-body p-0">
-                        <div class="ratio ratio-16x9">
-                            <iframe src="<?= htmlspecialchars($featuredVideo['video_url']) ?>" 
-                                    frameborder="0" 
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                    allowfullscreen></iframe>
-                        </div>
-                        <div class="p-4">
-                            <h3><?= htmlspecialchars($featuredVideo['title']) ?></h3>
-                            <p><?= htmlspecialchars($featuredVideo['description']) ?></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-        
-        <!-- Video Gallery -->
-        <div class="row g-4">
-            <?php foreach ($allVideos as $video): 
-                if ($video['is_featured']) continue; // Skip featured video since it's already shown
-                
-                // Extract YouTube video ID for thumbnail
-                $videoId = '';
-                if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $video['video_url'], $matches)) {
-                    $videoId = $matches[1];
-                }
+            function getAllVideos()
+            {
+                global $pdo;
+                $stmt = $pdo->query("SELECT * FROM videos");
+                return $stmt->fetchAll();
+            }
+
+            $featuredVideo = getFeaturedVideo();
+            $allVideos = getAllVideos();
             ?>
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                    <?php if ($videoId): ?>
-                    <img src="https://img.youtube.com/vi/<?= $videoId ?>/mqdefault.jpg" 
-                         class="card-img-top" 
-                         alt="<?= htmlspecialchars($video['title']) ?>">
-                    <?php elseif ($video['thumbnail_url']): ?>
-                    <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" 
-                         class="card-img-top" 
-                         alt="<?= htmlspecialchars($video['title']) ?>">
-                    <?php else: ?>
-                    <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 180px;">
-                        <i class="fas fa-video text-white" style="font-size: 3rem;"></i>
-                    </div>
-                    <?php endif; ?>
-                    <div class="card-body">
-                        <h5 class="card-title"><?= htmlspecialchars($video['title']) ?></h5>
-                        <p class="card-text text-muted"><?= htmlspecialchars(substr($video['description'], 0, 100)) ?>...</p>
-                    </div>
-                    <div class="card-footer bg-transparent">
-                        <a href="<?= htmlspecialchars($video['video_url']) ?>" 
-                           class="btn btn-primary w-100" 
-                           target="_blank">
-                           Watch Video
-                        </a>
+
+            <!-- Featured Video -->
+            <?php if ($featuredVideo): ?>
+                <div class="row mb-5">
+                    <div class="col-lg-8 mx-auto">
+                        <div class="card shadow">
+                            <div class="card-body p-0">
+                                <div class="ratio ratio-16x9">
+                                    <iframe src="<?= htmlspecialchars($featuredVideo['video_url']) ?>"
+                                        frameborder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowfullscreen></iframe>
+                                </div>
+                                <div class="p-4">
+                                    <h3><?= htmlspecialchars($featuredVideo['title']) ?></h3>
+                                    <p><?= htmlspecialchars($featuredVideo['description']) ?></p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            <?php endif; ?>
+
+            <!-- Video Gallery -->
+            <div class="row g-4">
+                <?php foreach ($allVideos as $video):
+                    if ($video['is_featured']) continue; // Skip featured video since it's already shown
+
+                    // Extract YouTube video ID for thumbnail
+                    $videoId = '';
+                    if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $video['video_url'], $matches)) {
+                        $videoId = $matches[1];
+                    }
+                ?>
+                    <div class="col-md-4">
+                        <div class="card h-100 shadow-sm">
+                            <?php if ($videoId): ?>
+                                <img src="https://img.youtube.com/vi/<?= $videoId ?>/mqdefault.jpg"
+                                    class="card-img-top"
+                                    alt="<?= htmlspecialchars($video['title']) ?>">
+                            <?php elseif ($video['thumbnail_url']): ?>
+                                <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>"
+                                    class="card-img-top"
+                                    alt="<?= htmlspecialchars($video['title']) ?>">
+                            <?php else: ?>
+                                <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 180px;">
+                                    <i class="fas fa-video text-white" style="font-size: 3rem;"></i>
+                                </div>
+                            <?php endif; ?>
+                            <div class="card-body">
+                                <h5 class="card-title"><?= htmlspecialchars($video['title']) ?></h5>
+                                <p class="card-text text-muted"><?= htmlspecialchars(substr($video['description'], 0, 100)) ?>...</p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="<?= htmlspecialchars($video['video_url']) ?>"
+                                    class="btn btn-primary w-100"
+                                    target="_blank">
+                                    Watch Video
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
         </div>
-    </div>
-</section>
+    </section>
     <!-- Products Section with edit buttons -->
     <section class="py-5" id="products">
         <div class="container">
@@ -825,51 +859,88 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
         </div>
     </section>
 
-    <!-- Contact Form -->
+    <!-- Replace the contact form section in welcome.php with this: -->
     <section class="py-5 bg-light" id="contact">
         <div class="container">
-            <h2 class="text-center section-title">Contact Us</h2>
-            <p class="text-center mb-5 lead">Have questions? Get in touch with our team</p>
             <div class="row justify-content-center">
                 <div class="col-lg-8">
-                    <div class="contact-form">
-                        <form id="contactForm">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name" class="form-label">Your Name</label>
-                                    <input type="text" class="form-control" id="name" required>
+                    <div class="text-center mb-5">
+                        <h2 class="section-title">Contact Us</h2>
+                        <p class="lead">Have questions? Get in touch with our team</p>
+                    </div>
+
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-4 p-md-5">
+                            <!-- Replace the form in your contact section with this -->
+                            <form id="contactForm" action="submit_contact.php" method="POST">
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="name" name="name" placeholder="Your Name" required>
+                                            <label for="name">Your Name</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <div class="form-floating">
+                                            <input type="email" class="form-control" id="email" name="email" placeholder="Email Address" required>
+                                            <label for="email">Email Address</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" id="email" required>
+
+                                <div class="mb-4">
+                                    <div class="form-floating">
+                                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="Phone Number">
+                                        <label for="phone">Phone Number</label>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Phone Number</label>
-                                <input type="tel" class="form-control" id="phone">
-                            </div>
-                            <div class="mb-3">
-                                <label for="subject" class="form-label">Subject</label>
-                                <select class="form-select" id="subject" required>
-                                    <option value="" selected disabled>Select a subject</option>
-                                    <option value="order">Order Inquiry</option>
-                                    <option value="visit">Farm Visit</option>
-                                    <option value="wholesale">Wholesale Purchase</option>
-                                    <option value="other">Other Question</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="message" class="form-label">Message</label>
-                                <textarea class="form-control" id="message" rows="5" required></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-lg w-100">Send Message</button>
-                        </form>
+
+                                <div class="mb-4">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="subject" name="subject" required>
+                                            <option value="" selected disabled></option>
+                                            <option value="order">Order Inquiry</option>
+                                            <option value="visit">Farm Visit</option>
+                                            <option value="wholesale">Wholesale Purchase</option>
+                                            <option value="other">Other Question</option>
+                                        </select>
+                                        <label for="subject">Subject</label>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-floating">
+                                        <textarea class="form-control" id="message" name="message" placeholder="Your Message" style="height: 150px" required></textarea>
+                                        <label for="message">Your Message</label>
+                                    </div>
+                                </div>
+
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
+                                        <i class="fas fa-paper-plane me-2"></i> Send Message
+                                    </button>
+                                </div>
+
+                                <!-- Add this hidden success message -->
+                                <div id="formSuccess" class="alert alert-success mt-3 text-center" style="display: none;">
+                                    Thank you! Your message has been sent successfully.
+                                </div>
+
+                                <!-- Add this hidden error message -->
+                                <div id="formError" class="alert alert-danger mt-3 text-center" style="display: none;">
+                                    Error submitting your message. Please try again or contact us directly.
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <p class="text-muted">Or contact us directly at <a href="mailto:ablienbah@gmail.com">ablienbah@gmail.com</a> or <a href="tel:+220311481">+220 311481</a></p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-
     <!-- Footer -->
     <footer class="bg-dark text-white py-5">
         <div class="container">
@@ -975,11 +1046,50 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Simple form handling
+        // Replace the form handling code with this
         document.getElementById('contactForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            alert('Thank you for your message! We will contact you soon.');
-            this.reset();
+            const form = this;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sending...';
+
+            // Hide any previous messages
+            document.getElementById('formSuccess').style.display = 'none';
+            document.getElementById('formError').style.display = 'none';
+
+            // Submit form via AJAX
+            fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error('Network response was not ok');
+                })
+                .then(data => {
+                    // Show success message
+                    document.getElementById('formSuccess').style.display = 'block';
+                    form.reset();
+
+                    // Scroll to success message
+                    document.getElementById('formSuccess').scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('formError').style.display = 'block';
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                });
         });
 
         // Back to top button

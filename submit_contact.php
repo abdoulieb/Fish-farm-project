@@ -1,26 +1,40 @@
 <?php
 require_once 'config.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = $_POST['name'];
-    $email = $_POST['email'];
-    $phone = $_POST['phone'] ?? null;
-    $subject = $_POST['subject'];
-    $message = $_POST['message'];
+header('Content-Type: application/json');
 
-    try {
-        $stmt = $pdo->prepare("INSERT INTO contact_submissions (name, email, phone, subject, message, submitted_at) 
-                              VALUES (?, ?, ?, ?, ?, NOW())");
-        $stmt->execute([$name, $email, $phone, $subject, $message]);
-
-        header('Location: welcome.php?contact=success');
-        exit();
-    } catch (PDOException $e) {
-        // Log error or handle it appropriately
-        header('Location: welcome.php?contact=error');
-        exit();
+try {
+    // Validate required fields
+    if (empty($_POST['name'])) {
+        throw new Exception('Name is required');
     }
-} else {
-    header('Location: welcome.php');
-    exit();
+    if (empty($_POST['email']) || !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+        throw new Exception('Valid email is required');
+    }
+    if (empty($_POST['subject'])) {
+        throw new Exception('Subject is required');
+    }
+    if (empty($_POST['message'])) {
+        throw new Exception('Message is required');
+    }
+
+    // Prepare and execute SQL
+    $stmt = $pdo->prepare("INSERT INTO contact_submissions 
+                          (name, email, phone, subject, message) 
+                          VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $_POST['name'],
+        $_POST['email'],
+        $_POST['phone'] ?? null,
+        $_POST['subject'],
+        $_POST['message']
+    ]);
+
+    echo json_encode(['success' => true]);
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
 }
