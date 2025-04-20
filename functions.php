@@ -280,7 +280,52 @@ function getPendingAssignmentsCount($employeeId)
     $stmt->execute([$employeeId]);
     return $stmt->fetch()['count'];
 }
+// Video functions
+function getAllVideos()
+{
+    global $pdo;
+    $stmt = $pdo->query("SELECT * FROM videos ORDER BY is_featured DESC, created_at DESC");
+    return $stmt->fetchAll();
+}
 
+function getFeaturedVideo()
+{
+    global $pdo;
+    $stmt = $pdo->query("SELECT * FROM videos WHERE is_featured = 1 ORDER BY created_at DESC LIMIT 1");
+    return $stmt->fetch();
+}
+
+function addVideo($title, $description, $videoUrl, $thumbnailUrl = null, $isFeatured = 0)
+{
+    global $pdo;
+
+    // Validate video URL or path
+    if (!filter_var($videoUrl, FILTER_VALIDATE_URL) && !file_exists($videoUrl)) {
+        return false;
+    }
+
+    // Validate thumbnail URL or path if provided
+    if ($thumbnailUrl && !filter_var($thumbnailUrl, FILTER_VALIDATE_URL) && !file_exists($thumbnailUrl)) {
+        $thumbnailUrl = null;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO videos (title, description, video_url, thumbnail_url, is_featured) VALUES (?, ?, ?, ?, ?)");
+    return $stmt->execute([$title, $description, $videoUrl, $thumbnailUrl, $isFeatured]);
+}
+
+function updateVideo($id, $title, $description, $isFeatured)
+{
+    global $pdo;
+    $stmt = $pdo->prepare("UPDATE videos SET title = ?, description = ?, is_featured = ? WHERE id = ?");
+    return $stmt->execute([$title, $description, $isFeatured, $id]);
+}
+
+function deleteVideo($id)
+{
+    global $pdo;
+    $stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
+    return $stmt->execute([$id]);
+}
 
 
 // Add to auth.php or functions.php

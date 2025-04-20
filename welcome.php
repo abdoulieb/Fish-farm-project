@@ -501,7 +501,94 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
         </div>
     </section>
 
-    <!-- In the Products Section of welcome.php -->
+    <!-- Video Showcase Section -->
+<section class="py-5 bg-light" id="videos">
+    <div class="container">
+        <h2 class="text-center section-title">Our Work Showcase</h2>
+        <p class="text-center mb-5 lead">See our fish farming process and operations</p>
+        
+        <?php 
+        function getFeaturedVideo() {
+            global $pdo;
+            $stmt = $pdo->query("SELECT * FROM videos WHERE is_featured = 1 LIMIT 1");
+            return $stmt->fetch();
+        }
+
+        function getAllVideos() {
+            global $pdo;
+            $stmt = $pdo->query("SELECT * FROM videos");
+            return $stmt->fetchAll();
+        }
+
+        $featuredVideo = getFeaturedVideo();
+        $allVideos = getAllVideos();
+        ?>
+        
+        <!-- Featured Video -->
+        <?php if ($featuredVideo): ?>
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow">
+                    <div class="card-body p-0">
+                        <div class="ratio ratio-16x9">
+                            <iframe src="<?= htmlspecialchars($featuredVideo['video_url']) ?>" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen></iframe>
+                        </div>
+                        <div class="p-4">
+                            <h3><?= htmlspecialchars($featuredVideo['title']) ?></h3>
+                            <p><?= htmlspecialchars($featuredVideo['description']) ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Video Gallery -->
+        <div class="row g-4">
+            <?php foreach ($allVideos as $video): 
+                if ($video['is_featured']) continue; // Skip featured video since it's already shown
+                
+                // Extract YouTube video ID for thumbnail
+                $videoId = '';
+                if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $video['video_url'], $matches)) {
+                    $videoId = $matches[1];
+                }
+            ?>
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm">
+                    <?php if ($videoId): ?>
+                    <img src="https://img.youtube.com/vi/<?= $videoId ?>/mqdefault.jpg" 
+                         class="card-img-top" 
+                         alt="<?= htmlspecialchars($video['title']) ?>">
+                    <?php elseif ($video['thumbnail_url']): ?>
+                    <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" 
+                         class="card-img-top" 
+                         alt="<?= htmlspecialchars($video['title']) ?>">
+                    <?php else: ?>
+                    <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <i class="fas fa-video text-white" style="font-size: 3rem;"></i>
+                    </div>
+                    <?php endif; ?>
+                    <div class="card-body">
+                        <h5 class="card-title"><?= htmlspecialchars($video['title']) ?></h5>
+                        <p class="card-text text-muted"><?= htmlspecialchars(substr($video['description'], 0, 100)) ?>...</p>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="<?= htmlspecialchars($video['video_url']) ?>" 
+                           class="btn btn-primary w-100" 
+                           target="_blank">
+                           Watch Video
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
     <!-- Products Section with edit buttons -->
     <section class="py-5" id="products">
         <div class="container">
