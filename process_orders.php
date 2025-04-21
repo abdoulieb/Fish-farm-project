@@ -5,7 +5,7 @@ require_once 'functions.php';
 // Check if user is employee with process orders permission or admin
 if (!canEmployeeProcessOrders() && !isAdmin()) {
     $_SESSION['error'] = "You don't have permission to process orders";
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 

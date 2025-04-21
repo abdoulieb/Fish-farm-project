@@ -5,7 +5,7 @@ require_once 'functions.php';
 // Check if user is employee with fatality recording permission
 if (!canEmployeeRecordFatality() && !isAdmin()) {
     $_SESSION['error'] = "You don't have permission to record fatalities";
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 

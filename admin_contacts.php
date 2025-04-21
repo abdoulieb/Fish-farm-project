@@ -39,7 +39,7 @@ $submissions = $stmt->fetchAll();
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="welcome.php">
+            <a class="navbar-brand" href="index.php">
                 <i class="fas fa-fish me-2"></i> Bah & Brothers
             </a>
             <div class="collapse navbar-collapse">

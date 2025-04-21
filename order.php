@@ -8,14 +8,14 @@ if (!isLoggedIn()) {
 }
 
 if (!isset($_GET['fish_id'])) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 
 $fishId = $_GET['fish_id'];
 $fish = getFishTypeById($fishId);
 if (!$fish) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">Home</a>
+                        <a class="nav-link" href="dashboard.php">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="orders.php">My Orders</a>
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="number" step="0.1" min="0.1" max="<?= $available ?>" class="form-control" id="quantity" name="quantity" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Place Order</button>
-                    <a href="index.php" class="btn btn-secondary">Cancel</a>
+                    <a href="dashboard.php" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>

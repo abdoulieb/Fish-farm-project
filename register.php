@@ -2,7 +2,7 @@
 require_once 'auth.php';
 
 if (isLoggedIn()) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 
@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     <div class="card-footer text-center">
-                        <a href="welcome.php" class="text-decoration-none">
+                        <a href="index.php" class="text-decoration-none">
                             <i class="fas fa-arrow-left me-1"></i> Back to Home
                         </a>
                     </div>

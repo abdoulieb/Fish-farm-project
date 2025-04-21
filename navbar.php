@@ -18,14 +18,14 @@ if (isEmployee()) {
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-        <a class="navbar-brand" href="index.php">Fish Farm</a>
+        <a class="navbar-brand" href="dashboard.php">Fish Farm</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                    <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : '' ?>" href="index.php">
+                    <a class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : '' ?>" href="dashboard.php">
                         Home
                     </a>
                 </li>
@@ -104,7 +104,7 @@ if (isEmployee()) {
     </div>
 </nav>
 
-<?php if (isEmployee() && !empty($employeeInventory) && basename($_SERVER['PHP_SELF']) === 'index.php'): ?>
+<?php if (isEmployee() && !empty($employeeInventory) && basename($_SERVER['PHP_SELF']) === 'dashboard.php'): ?>
     <div class="container mt-3">
         <div class="alert alert-info">
             <h5>Your Available Inventory</h5>

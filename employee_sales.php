@@ -5,7 +5,7 @@ require_once 'functions.php';
 // Check if user has sales permission (employee with sell permission or admin)
 if (!canEmployeeSell() && !isAdmin()) {
     $_SESSION['error'] = "You don't have permission to access the sales page";
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 
@@ -414,6 +414,11 @@ include 'navbar.php';
             background-color: #f8d7da;
             color: #721c24;
         }
+
+        #completeSaleBtn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
@@ -514,7 +519,7 @@ include 'navbar.php';
                                                         <option value="<?= $fish['id'] ?>"
                                                             data-price="<?= $fish['price_per_kg'] ?>"
                                                             data-available="<?= $fish['available_kg'] ?>">
-                                                            <?= htmlspecialchars($fish['name']) ?> (D<?= number_format($fish['price_per_kg'], 2) ?>/kg)
+                                                            🐟 <?= htmlspecialchars($fish['name']) ?> (D<?= number_format($fish['price_per_kg'], 2) ?>/kg)
                                                         </option>
                                                     <?php endforeach; ?>
                                                 </select>
@@ -548,7 +553,7 @@ include 'navbar.php';
                                         </div>
                                     </div>
                                     <div class="mt-4">
-                                        <button type="submit" class="btn btn-primary">Complete Sale</button>
+                                        <button type="submit" id="completeSaleBtn" class="btn btn-primary" disabled>Complete Sale</button>
                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                                     </div>
                                 </form>
@@ -1052,6 +1057,66 @@ include 'navbar.php';
 
                             window.location.href = `employee_sales.php?${params.toString()}`;
                         });
+                    }
+                });
+                // Add this to your existing JavaScript
+                function updateCompleteButton() {
+                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                    const paymentMethod = document.getElementById('payment_method').value;
+                    const completeBtn = document.getElementById('completeSaleBtn');
+
+                    // For credit sales, always enable the button
+                    if (paymentMethod === 'credit') {
+                        completeBtn.disabled = false;
+                        return;
+                    }
+
+                    // For other payment methods, enable only if money given >= total
+                    completeBtn.disabled = moneyGiven < totalAmount;
+                }
+
+                // Call this function when money given or payment method changes
+                document.getElementById('money_given').addEventListener('input', updateCompleteButton);
+                document.getElementById('payment_method').addEventListener('change', updateCompleteButton);
+
+                // Also call it when the total changes (like in your calculateTotal function)
+                function calculateTotal() {
+                    let total = 0;
+                    document.querySelectorAll('.fish-item').forEach(item => {
+                        const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
+                        const price = parseFloat(item.querySelector('.price').value) || 0;
+                        total += quantity * price;
+                    });
+                    document.getElementById('totalAmount').textContent = total.toFixed(2);
+                    updateChangeDisplay();
+                    updateCompleteButton(); // Add this line
+                }
+                document.getElementById('salesForm').addEventListener('submit', function(e) {
+                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                    const paymentMethod = document.getElementById('payment_method').value;
+                    const change = moneyGiven - totalAmount;
+
+                    // Skip validation for credit sales
+                    if (paymentMethod === 'credit') {
+                        return true;
+                    }
+
+                    // For other payment methods, validate money given
+                    if (change < 0) {
+                        e.preventDefault();
+                        alert(`Insufficient amount given!\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nShort: D${Math.abs(change).toFixed(2)}`);
+                        document.getElementById('money_given').focus();
+                        return false;
+                    }
+
+                    // If change is not exactly 0, show confirmation
+                    if (change !== 0) {
+                        if (!confirm(`Confirm transaction:\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nChange: D${change.toFixed(2)}`)) {
+                            e.preventDefault();
+                            return false;
+                        }
                     }
                 });
             </script>

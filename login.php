@@ -2,7 +2,7 @@
 require_once 'auth.php';
 
 if (isLoggedIn()) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 
@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
 
     if (loginUser($username, $password)) {
-        header("Location: index.php");
+        header("Location: dashboard.php");
         exit();
     } else {
         $error = "Invalid username or password.";
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <p><a href="#">Forgot password?</a></p>
                             </div>
                             <p class="text-center mt-3">
-                                <a href="welcome.php" class="text-decoration-none">
+                                <a href="index.php" class="text-decoration-none">
                                     <i class="fas fa-arrow-left me-1"></i> Back to Home
                                 </a>
                             </p>

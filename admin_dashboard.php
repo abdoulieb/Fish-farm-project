@@ -46,7 +46,7 @@ if (isset($_SESSION['error'])) {
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="index.php">
+            <a class="navbar-brand" href="dashboard.php">
                 <i class="fas fa-arrow-left"></i> Back to Site
             </a>
         </div>

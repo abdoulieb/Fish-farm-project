@@ -6,7 +6,7 @@ require_once 'navbar.php';
 // Permission check
 if (!isAdmin() && !canEmployeeSell()) {
     $_SESSION['error'] = "You don't have permission to access this page";
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 

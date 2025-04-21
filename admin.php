@@ -3,7 +3,7 @@ require_once 'auth.php';
 require_once 'functions.php';
 
 if (!isAdmin()) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit();
 }
 
@@ -115,7 +115,7 @@ $contacts = $pdo->query($contactsQuery)->fetchAll();
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">Home</a>
+                        <a class="nav-link" href="dashboard.php">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="orders.php">My Orders</a>
