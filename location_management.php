@@ -37,8 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_assignment'])) {
 
         $availableKg = floatval($inventory['quantity_kg']);
 
-        if ($quantity > $availableKg) {
-            throw new Exception("Cannot assign more than available inventory. Available: $availableKg kg");
+        // Check if assignment would exceed available inventory
+        $stmt = $pdo->prepare("SELECT COALESCE(SUM(quantity), 0) as total_assigned FROM location_inventory WHERE fish_type_id = ?");
+        $stmt->execute([$fishTypeId]);
+        $assigned = $stmt->fetch();
+        $totalAssigned = floatval($assigned['total_assigned']);
+
+        $remainingKg = $availableKg - $totalAssigned;
+
+        if ($quantity > $remainingKg) {
+            throw new Exception("Cannot assign more than available inventory. Available: $remainingKg kg");
         }
 
         // Insert or update location assignment
@@ -56,13 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_assignment'])) {
             ':fish_type_id' => $fishTypeId,
             ':quantity' => $quantity
         ]);
-
-        // Update main inventory (subtract the assigned quantity)
-        $stmt = $pdo->prepare("
-            UPDATE inventory SET quantity_kg = quantity_kg - ? 
-            WHERE fish_type_id = ?
-        ");
-        $stmt->execute([$quantity, $fishTypeId]);
 
         $pdo->commit();
         $_SESSION['message'] = "Inventory assigned successfully!";
@@ -111,25 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_location'])) {
 
     try {
         $pdo->beginTransaction();
-
-        // First get all inventory assignments to this location to return quantities
-        $stmt = $pdo->prepare("
-            SELECT fish_type_id, SUM(quantity) as total_quantity 
-            FROM location_inventory 
-            WHERE location_id = ?
-            GROUP BY fish_type_id
-        ");
-        $stmt->execute([$locationId]);
-        $assignments = $stmt->fetchAll();
-
-        // Return quantities to main inventory
-        foreach ($assignments as $assignment) {
-            $stmt = $pdo->prepare("
-                UPDATE inventory SET quantity_kg = quantity_kg + ? 
-                WHERE fish_type_id = ?
-            ");
-            $stmt->execute([$assignment['total_quantity'], $assignment['fish_type_id']]);
-        }
 
         // Delete related inventory assignments
         $stmt = $pdo->prepare("DELETE FROM location_inventory WHERE location_id = :location_id");
@@ -219,34 +201,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
     }
 
     $assignmentId = $_POST['assignment_id'];
-    $fishTypeId = $_POST['fish_type_id'];
-    $quantity = floatval($_POST['quantity']);
 
     try {
         $pdo->beginTransaction();
-
-        // Verify the assignment exists and get its current quantity
-        $stmt = $pdo->prepare("SELECT quantity FROM location_inventory WHERE id = ?");
-        $stmt->execute([$assignmentId]);
-        $assignment = $stmt->fetch();
-
-        if (!$assignment) {
-            throw new Exception("Assignment not found");
-        }
-
-        // Return the FULL quantity to main inventory
-        $stmt = $pdo->prepare("
-            UPDATE inventory SET quantity_kg = quantity_kg + ? 
-            WHERE fish_type_id = ?
-        ");
-        $stmt->execute([$assignment['quantity'], $fishTypeId]);
 
         // Delete the assignment
         $stmt = $pdo->prepare("DELETE FROM location_inventory WHERE id = ?");
         $stmt->execute([$assignmentId]);
 
         $pdo->commit();
-        $_SESSION['message'] = "Assignment deleted successfully. " . number_format($assignment['quantity'], 2) . " kg returned to inventory.";
+        $_SESSION['message'] = "Assignment deleted successfully.";
     } catch (Exception $e) {
         $pdo->rollBack();
         $_SESSION['error'] = "Failed to delete assignment: " . $e->getMessage();
@@ -338,6 +302,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
         .available-quantity {
             font-size: 0.8rem;
             color: #6c757d;
+        }
+        
+        .remaining-quantity {
+            font-size: 0.8rem;
+            color: #28a745;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -451,7 +421,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                                 <?php foreach ($fishTypes as $fishType): ?>
                                     <option value="<?= $fishType['id'] ?>" data-available="<?= $fishType['available_kg'] ?>">
                                         <?= htmlspecialchars($fishType['name']) ?>
-                                        <span class="available-quantity">(Available: <?= number_format($fishType['available_kg'], 2) ?> kg)</span>
+                                        <span class="available-quantity">(Total: <?= number_format($fishType['available_kg'], 2) ?> kg)</span>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -462,7 +432,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                                 <input type="number" step="0.01" min="0" class="form-control" id="quantity" name="quantity" required placeholder="0.00">
                                 <span class="input-group-text">kg</span>
                             </div>
-                            <small id="availableDisplay" class="text-muted"></small>
+                            <small id="availableDisplay" class="available-quantity"></small>
+                            <small id="remainingDisplay" class="remaining-quantity"></small>
                         </div>
                         <div class="col-md-12 mt-3">
                             <button type="submit" name="add_assignment" class="btn btn-primary">
@@ -485,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                             <th>Employee</th>
                             <th>Fish Type</th>
                             <th>Quantity (kg)</th>
-                            <th>new added (kg)</th>
+                            <th>New Added (kg)</th>
                             <th>Last Updated</th>
                             <th>Last Sale</th>
                             <th>Status</th>
@@ -503,7 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                                 <td><?= date('M j, Y g:i a', strtotime($assignment['last_updated'])) ?></td>
                                 <td><?= $assignment['last_sale_date'] ? date('M j, Y g:i a', strtotime($assignment['last_sale_date'])) : 'Never' ?></td>
                                 <td>
-                                    <span class="badge badge-<?= strtolower($assignment['status_text']) ?>">
+                                    <span class="badge badge-<?= strtolower($assignment['status']) ?>">
                                         <?= $assignment['status_text'] ?>
                                     </span>
                                 </td>
@@ -520,7 +491,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                                             <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
                                             <input type="hidden" name="action" value="reject">
                                             <button type="submit" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to reject this assignment? The quantity will be returned to main inventory.')">
+                                                onclick="return confirm('Are you sure you want to reject this assignment?')">
                                                 <i class="fas fa-times"></i> Reject
                                             </button>
                                         </form>
@@ -532,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                                             <input type="hidden" name="fish_type_id" value="<?= $assignment['fish_type_id'] ?>">
                                             <input type="hidden" name="quantity" value="<?= $assignment['quantity'] ?>">
                                             <button type="submit" name="delete_assignment" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to delete this assignment? The quantity will be returned to main inventory.')">
+                                                onclick="return confirm('Are you sure you want to delete this assignment?')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -568,28 +539,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
             const fishTypeSelect = document.getElementById('fish_type_id');
             const quantityInput = document.getElementById('quantity');
             const availableDisplay = document.getElementById('availableDisplay');
+            const remainingDisplay = document.getElementById('remainingDisplay');
+
+            async function updateAvailableQuantity() {
+                const fishTypeId = fishTypeSelect.value;
+                if (!fishTypeId) return;
+
+                try {
+                    // Fetch current assignments for this fish type
+                    const response = await fetch(`get_assigned_quantity.php?fish_type_id=${fishTypeId}`);
+                    const data = await response.json();
+                    
+                    const selectedOption = fishTypeSelect.options[fishTypeSelect.selectedIndex];
+                    const totalAvailable = parseFloat(selectedOption.dataset.available) || 0;
+                    const totalAssigned = parseFloat(data.total_assigned) || 0;
+                    const remaining = totalAvailable - totalAssigned;
+
+                    availableDisplay.textContent = `Total in inventory: ${totalAvailable.toFixed(2)} kg`;
+                    remainingDisplay.textContent = `Remaining available: ${remaining.toFixed(2)} kg`;
+                    
+                    // Set max quantity to remaining available
+                    quantityInput.max = remaining;
+                    quantityInput.title = `Maximum: ${remaining.toFixed(2)} kg`;
+
+                    // Validate current quantity
+                    const quantity = parseFloat(quantityInput.value) || 0;
+                    if (quantity > remaining) {
+                        quantityInput.setCustomValidity(`Cannot assign more than ${remaining.toFixed(2)} kg`);
+                    } else {
+                        quantityInput.setCustomValidity('');
+                    }
+                } catch (error) {
+                    console.error('Error fetching assigned quantity:', error);
+                }
+            }
 
             if (fishTypeSelect && quantityInput && availableDisplay) {
-                fishTypeSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const availableKg = parseFloat(selectedOption.dataset.available) || 0;
-
-                    availableDisplay.textContent = `Available: ${availableKg.toFixed(2)} kg`;
-                    quantityInput.max = availableKg;
-
-                    // Show warning if trying to assign more than available
-                    quantityInput.addEventListener('input', function() {
-                        const quantity = parseFloat(this.value) || 0;
-                        if (quantity > availableKg) {
-                            availableDisplay.innerHTML = `<span class="text-danger">Cannot assign more than available (${availableKg.toFixed(2)} kg)</span>`;
-                        } else {
-                            availableDisplay.textContent = `Available: ${availableKg.toFixed(2)} kg`;
-                        }
-                    });
+                fishTypeSelect.addEventListener('change', updateAvailableQuantity);
+                
+                quantityInput.addEventListener('input', function() {
+                    const max = parseFloat(this.max) || 0;
+                    const quantity = parseFloat(this.value) || 0;
+                    
+                    if (quantity > max) {
+                        this.setCustomValidity(`Cannot assign more than ${max.toFixed(2)} kg`);
+                        remainingDisplay.innerHTML = `<span class="text-danger">Cannot assign more than ${max.toFixed(2)} kg</span>`;
+                    } else {
+                        this.setCustomValidity('');
+                        const remaining = max - quantity;
+                        remainingDisplay.textContent = `Will remain: ${remaining.toFixed(2)} kg`;
+                    }
                 });
 
-                // Trigger change event to initialize
-                fishTypeSelect.dispatchEvent(new Event('change'));
+                // Initialize
+                updateAvailableQuantity();
             }
         });
     </script>
