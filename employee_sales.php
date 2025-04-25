@@ -108,7 +108,6 @@ foreach ($todaySales as $sale) {
 }
 
 // Get reconciliation reports for admin view or employee's own view
-// Get reconciliation reports for admin view or employee's own view
 if (isAdmin()) {
     $reconciliationReports = $pdo->prepare("
         SELECT cr.*, u.username as employee_name 
@@ -129,7 +128,6 @@ if (isAdmin()) {
 }
 $allReconciliations = $reconciliationReports->fetchAll();
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle new sale submission
     if (isset($_POST['fish_type_id'])) {
@@ -138,94 +136,134 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $items = [];
         $totalAmount = 0;
 
-        // In the POST handler for new sales (around line 130 in employee_sales.php)
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fish_type_id'])) {
-            $paymentMethod = $_POST['payment_method'] ?? 'cash';
+        // For employees (non-admins), check they have accepted assignments
+        if (!isAdmin()) {
+            foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
+                $quantity = floatval($_POST['quantity'][$index]);
+                if ($quantity > 0) {
+                    $stmt = $pdo->prepare("
+                        SELECT status FROM location_inventory
+                        WHERE employee_id = ? AND fish_type_id = ? AND status = 'accepted'
+                    ");
+                    $stmt->execute([$_SESSION['user_id'], $fishTypeId]);
+                    $assignment = $stmt->fetch();
 
-            $items = [];
-            $totalAmount = 0;
-
-            // For employees (non-admins), check they have accepted assignments
-            if (!isAdmin()) {
-                foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
-                    $quantity = floatval($_POST['quantity'][$index]);
-                    if ($quantity > 0) {
-                        $stmt = $pdo->prepare("
-                    SELECT status FROM location_inventory
-                    WHERE employee_id = ? AND fish_type_id = ? AND status = 'accepted'
-                ");
-                        $stmt->execute([$_SESSION['user_id'], $fishTypeId]);
-                        $assignment = $stmt->fetch();
-
-                        if (!$assignment) {
-                            echo "<script>
-                        alert('You must have accepted inventory assignments to make sales.');
-                        window.location.href = 'employee_sales.php';
-                    </script>";
-                            exit();
-                        }
+                    if (!$assignment) {
+                        echo "<script>
+                            alert('You must have accepted inventory assignments to make sales.');
+                            window.location.href = 'employee_sales.php';
+                        </script>";
+                        exit();
                     }
+                }
 
-                    $fish = getFishTypeById($fishTypeId);
-                    $items[] = [
-                        'fish_type_id' => $fishTypeId,
-                        'quantity' => $quantity,
-                        'unit_price' => $fish['price_per_kg']
-                    ];
-                    $totalAmount += $quantity * $fish['price_per_kg'];
-                }
-            } else {
-                // For admins, no assignment check needed
-                foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
-                    $quantity = floatval($_POST['quantity'][$index]);
-                    $fish = getFishTypeById($fishTypeId);
-                    $items[] = [
-                        'fish_type_id' => $fishTypeId,
-                        'quantity' => $quantity,
-                        'unit_price' => $fish['price_per_kg']
-                    ];
-                    $totalAmount += $quantity * $fish['price_per_kg'];
-                }
+                $fish = getFishTypeById($fishTypeId);
+                $items[] = [
+                    'fish_type_id' => $fishTypeId,
+                    'quantity' => $quantity,
+                    'unit_price' => $fish['price_per_kg']
+                ];
+                $totalAmount += $quantity * $fish['price_per_kg'];
             }
+        } else {
+            // For admins, check main inventory availability
+            foreach ($_POST['fish_type_id'] as $index => $fishTypeId) {
+                $quantity = floatval($_POST['quantity'][$index]);
+                if ($quantity > 0) {
+                    $stmt = $pdo->prepare("
+                        SELECT quantity_kg FROM inventory 
+                        WHERE fish_type_id = ?
+                    ");
+                    $stmt->execute([$fishTypeId]);
+                    $inventory = $stmt->fetch();
 
-            // Rest of the sale processing remains the same...
+                    if (!$inventory || $inventory['quantity_kg'] < $quantity) {
+                        $fishName = getFishTypeById($fishTypeId)['name'];
+                        $_SESSION['error'] = "Not enough inventory available for $fishName";
+                        header("Location: employee_sales.php");
+                        exit();
+                    }
+                }
+
+                $fish = getFishTypeById($fishTypeId);
+                $items[] = [
+                    'fish_type_id' => $fishTypeId,
+                    'quantity' => $quantity,
+                    'unit_price' => $fish['price_per_kg']
+                ];
+                $totalAmount += $quantity * $fish['price_per_kg'];
+            }
         }
 
-        // In the sale processing code (around line 160 in employee_sales.php)
         if (!empty($items)) {
             try {
                 $pdo->beginTransaction();
 
+                // First validate all inventory levels
+                foreach ($items as $item) {
+                    if ($item['quantity'] <= 0) continue;
+
+                    // For employees, check their assigned inventory
+                    if (!isAdmin()) {
+                        $stmt = $pdo->prepare("
+                            SELECT quantity FROM location_inventory 
+                            WHERE employee_id = ? AND fish_type_id = ? AND status = 'accepted'
+                            FOR UPDATE
+                        ");
+                        $stmt->execute([$_SESSION['user_id'], $item['fish_type_id']]);
+                        $assignment = $stmt->fetch();
+
+                        if (!$assignment || $assignment['quantity'] < $item['quantity']) {
+                            throw new Exception("Not enough inventory available for fish type ID: " . $item['fish_type_id']);
+                        }
+                    }
+
+                    // For all sales, check main inventory
+                    $stmt = $pdo->prepare("
+                        SELECT quantity_kg FROM inventory 
+                        WHERE fish_type_id = ?
+                        FOR UPDATE
+                    ");
+                    $stmt->execute([$item['fish_type_id']]);
+                    $inventory = $stmt->fetch();
+
+                    if (!$inventory || $inventory['quantity_kg'] < $item['quantity']) {
+                        throw new Exception("Not enough inventory available in main stock for fish type ID: " . $item['fish_type_id']);
+                    }
+                }
+
                 // Create sale record
                 $stmt = $pdo->prepare("
-            INSERT INTO sales (employee_id, total_amount, payment_method) 
-            VALUES (?, ?, ?)
-        ");
+                    INSERT INTO sales (employee_id, total_amount, payment_method) 
+                    VALUES (?, ?, ?)
+                ");
                 $stmt->execute([$_SESSION['user_id'], $totalAmount, $paymentMethod]);
                 $saleId = $pdo->lastInsertId();
 
                 // Add sale items and update inventories
                 foreach ($items as $item) {
+                    if ($item['quantity'] <= 0) continue;
+
                     // Add sale item
                     $stmt = $pdo->prepare("
-                INSERT INTO sale_items (sale_id, fish_type_id, quantity_kg, unit_price) 
-                VALUES (?, ?, ?, ?)
-            ");
+                        INSERT INTO sale_items (sale_id, fish_type_id, quantity_kg, unit_price) 
+                        VALUES (?, ?, ?, ?)
+                    ");
                     $stmt->execute([$saleId, $item['fish_type_id'], $item['quantity'], $item['unit_price']]);
 
                     // Update main inventory (for both admin and employee sales)
                     $stmt = $pdo->prepare("
-                UPDATE inventory SET quantity_kg = quantity_kg - ? 
-                WHERE fish_type_id = ?
-            ");
+                        UPDATE inventory SET quantity_kg = quantity_kg - ? 
+                        WHERE fish_type_id = ?
+                    ");
                     $stmt->execute([$item['quantity'], $item['fish_type_id']]);
 
                     // Update employee's assigned inventory (employees only)
                     if (!isAdmin()) {
                         $stmt = $pdo->prepare("
-                    UPDATE location_inventory SET quantity = quantity - ? 
-                    WHERE employee_id = ? AND fish_type_id = ?
-                ");
+                            UPDATE location_inventory SET quantity = quantity - ? 
+                            WHERE employee_id = ? AND fish_type_id = ?
+                        ");
                         $stmt->execute([$item['quantity'], $_SESSION['user_id'], $item['fish_type_id']]);
                     }
                 }
@@ -275,7 +313,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-// Add this near the top of employee_sales.php after the existing POST handling
+
+// Handle sale cancellation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_sale'])) {
     $saleId = intval($_POST['sale_id']);
     if (cancelSale($saleId, $_SESSION['user_id'])) {
@@ -287,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_sale'])) {
     }
 }
 
-// Add this to check if reconciliation was already submitted today
+// Check if reconciliation was already submitted today
 $hasSubmittedToday = false;
 if (!isAdmin()) {
     $checkSubmission = $pdo->prepare("
@@ -297,7 +336,8 @@ if (!isAdmin()) {
     $checkSubmission->execute([$_SESSION['user_id'], $today]);
     $hasSubmittedToday = (bool)$checkSubmission->fetch();
 }
-// Add this near the top of the file with other POST handling
+
+// Handle reconciliation updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_reconciliation'])) {
     $reportId = intval($_POST['report_id']);
     $physicalCash = floatval($_POST['physical_cash']);
@@ -418,6 +458,16 @@ include 'navbar.php';
         #completeSaleBtn:disabled {
             opacity: 0.65;
             cursor: not-allowed;
+        }
+
+        .is-invalid {
+            border-color: #dc3545;
+            background-color: #fff3f3;
+        }
+
+        .is-invalid+.available-text {
+            color: #dc3545;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -589,23 +639,135 @@ include 'navbar.php';
                             }
                         }
 
-                        // In the JavaScript section (around line 800 in employee_sales.php)
-                        document.getElementById('salesForm').addEventListener('submit', function(e) {
+                        // Add new item row
+                        document.getElementById('addItem').addEventListener('click', function() {
+                            const newItem = document.querySelector('.fish-item').cloneNode(true);
+                            newItem.querySelector('.quantity').value = '';
+                            newItem.querySelector('.price').value = '';
+                            newItem.querySelector('.available-text').textContent = 'Available: 0 kg';
+                            document.getElementById('itemsContainer').appendChild(newItem);
+                            updateRemoveButtons();
+                        });
+
+                        // Update remove buttons
+                        function updateRemoveButtons() {
+                            document.querySelectorAll('.remove-item').forEach(button => {
+                                button.addEventListener('click', function() {
+                                    if (document.querySelectorAll('.fish-item').length > 1) {
+                                        this.closest('.fish-item').remove();
+                                        calculateTotal();
+                                    }
+                                });
+                            });
+                        }
+
+                        // Update price and available quantity when fish type changes
+                        document.addEventListener('change', function(e) {
+                            if (e.target.classList.contains('fish-type')) {
+                                const selectedOption = e.target.options[e.target.selectedIndex];
+                                const price = selectedOption.dataset.price || '0';
+                                const available = selectedOption.dataset.available || '0';
+
+                                const itemRow = e.target.closest('.fish-item');
+                                itemRow.querySelector('.price').value = price;
+                                itemRow.querySelector('.available-text').textContent = `Available: ${available} kg`;
+
+                                // Set max attribute to prevent entering more than available
+                                const quantityInput = itemRow.querySelector('.quantity');
+                                quantityInput.max = available;
+                                if (parseFloat(quantityInput.value) > parseFloat(available)) {
+                                    quantityInput.value = available;
+                                }
+
+                                calculateTotal();
+                            }
+                        });
+
+                        // Calculate total when quantity changes
+                        document.addEventListener('input', function(e) {
+                            if (e.target.classList.contains('quantity')) {
+                                calculateTotal();
+                            }
+                        });
+
+                        // Calculate total amount
+                        function calculateTotal() {
+                            let total = 0;
+                            document.querySelectorAll('.fish-item').forEach(item => {
+                                const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
+                                const price = parseFloat(item.querySelector('.price').value) || 0;
+                                total += quantity * price;
+                            });
+                            document.getElementById('totalAmount').textContent = total.toFixed(2);
+                            updateChangeDisplay();
+                            updateCompleteButton();
+                        }
+
+                        // Update complete button state
+                        function updateCompleteButton() {
                             const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
                             const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                            const paymentMethod = document.getElementById('payment_method').value;
+                            const completeBtn = document.getElementById('completeSaleBtn');
+
+                            // For credit sales, always enable the button
+                            if (paymentMethod === 'credit') {
+                                completeBtn.disabled = false;
+                                return;
+                            }
+
+                            // For other payment methods, enable only if money given >= total
+                            completeBtn.disabled = moneyGiven < totalAmount;
+                        }
+
+                        // Call this function when money given or payment method changes
+                        document.getElementById('money_given').addEventListener('input', updateCompleteButton);
+                        document.getElementById('payment_method').addEventListener('change', updateCompleteButton);
+
+                        // Form submission validation
+                        document.getElementById('salesForm').addEventListener('submit', function(e) {
+                            // Check all quantities don't exceed available amounts
+                            let isValid = true;
+                            document.querySelectorAll('.fish-item').forEach(item => {
+                                const fishSelect = item.querySelector('.fish-type');
+                                const quantityInput = item.querySelector('.quantity');
+
+                                if (fishSelect.value && quantityInput.value) {
+                                    const available = parseFloat(fishSelect.options[fishSelect.selectedIndex].dataset.available || 0);
+                                    const quantity = parseFloat(quantityInput.value) || 0;
+
+                                    if (quantity > available) {
+                                        isValid = false;
+                                        quantityInput.classList.add('is-invalid');
+                                        const fishName = fishSelect.options[fishSelect.selectedIndex].text.split(' (')[0];
+                                        alert(`Cannot sell ${quantity}kg of ${fishName} - only ${available}kg available`);
+                                    } else {
+                                        quantityInput.classList.remove('is-invalid');
+                                    }
+                                }
+                            });
+
+                            if (!isValid) {
+                                e.preventDefault();
+                                return false;
+                            }
+
+                            const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+                            const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
+                            const paymentMethod = document.getElementById('payment_method').value;
                             const change = moneyGiven - totalAmount;
 
+                            // Skip validation for credit sales
+                            if (paymentMethod === 'credit') {
+                                return true;
+                            }
+
+                            // For other payment methods, validate money given
                             if (change < 0) {
                                 e.preventDefault();
                                 alert(`Insufficient amount given!\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nShort: D${Math.abs(change).toFixed(2)}`);
                                 document.getElementById('money_given').focus();
                                 return false;
-                            }
-
-                            // For credit sales, skip the change confirmation
-                            const paymentMethod = document.getElementById('payment_method').value;
-                            if (paymentMethod === 'credit') {
-                                return true;
                             }
 
                             // If change is not exactly 0, show confirmation
@@ -615,10 +777,12 @@ include 'navbar.php';
                                     return false;
                                 }
                             }
-                        }); // Initialize change display
-                        document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
-                        updateChangeDisplay(); // Set initial state
+                        });
 
+                        // Initialize change display
+                        document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
+                        updateChangeDisplay();
+                        updateRemoveButtons();
                     });
                 </script>
             </div>
@@ -685,7 +849,8 @@ include 'navbar.php';
                     </div>
                 <?php endif; ?>
             </div>
-            <!-- Replace the Daily Report Tab content with this: -->
+
+            <!-- Daily Report Tab -->
             <div class="tab-pane fade" id="daily-report" role="tabpanel">
                 <h4>Daily Sales Report - <?= date('F j, Y') ?></h4>
 
@@ -830,7 +995,8 @@ include 'navbar.php';
                     </div>
                 </div>
             </div>
-            <!-- Update the Reconciliation Reports Tab content with this: -->
+
+            <!-- Reconciliation Reports Tab -->
             <div class="tab-pane fade" id="reconciliation" role="tabpanel">
                 <h4><?= isAdmin() ? 'All' : 'My' ?> Cash Reconciliation Reports</h4>
 
@@ -1019,354 +1185,75 @@ include 'navbar.php';
                     }
                 </style>
             </div>
+        </div>
+    </div>
 
-            <!-- Add this to your existing JavaScript -->
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Edit reconciliation modal
-                    const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Edit reconciliation modal
+            const editModal = new bootstrap.Modal(document.getElementById('editReconciliationModal'));
 
-                    document.querySelectorAll('.edit-reconciliation').forEach(button => {
-                        button.addEventListener('click', function() {
-                            const reportId = this.dataset.id;
-                            const physicalCash = this.dataset.physical;
-                            const pettyCash = this.dataset.petty;
-                            const expectedAmount = this.dataset.expected;
+            document.querySelectorAll('.edit-reconciliation').forEach(button => {
+                button.addEventListener('click', function() {
+                    const reportId = this.dataset.id;
+                    const physicalCash = this.dataset.physical;
+                    const pettyCash = this.dataset.petty;
+                    const expectedAmount = this.dataset.expected;
 
-                            // Set form values
-                            document.getElementById('report_id').value = reportId;
-                            document.getElementById('edit_physical_cash').value = physicalCash;
-                            document.getElementById('edit_petty_cash').value = pettyCash;
-                            document.getElementById('edit_expected_amount').textContent = parseFloat(expectedAmount).toFixed(2);
+                    // Set form values
+                    document.getElementById('report_id').value = reportId;
+                    document.getElementById('edit_physical_cash').value = physicalCash;
+                    document.getElementById('edit_petty_cash').value = pettyCash;
+                    document.getElementById('edit_expected_amount').textContent = parseFloat(expectedAmount).toFixed(2);
 
-                            editModal.show();
-                        });
-                    });
-
-                    // Filter functionality for reconciliation reports
-                    const filterForm = document.getElementById('reconciliationFilter');
-                    if (filterForm) {
-                        filterForm.addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            const formData = new FormData(this);
-                            const params = new URLSearchParams();
-
-                            for (const [key, value] of formData.entries()) {
-                                if (value) params.append(key, value);
-                            }
-
-                            window.location.href = `employee_sales.php?${params.toString()}`;
-                        });
-                    }
+                    editModal.show();
                 });
-                // Add this to your existing JavaScript
-                function updateCompleteButton() {
-                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
-                    const paymentMethod = document.getElementById('payment_method').value;
-                    const completeBtn = document.getElementById('completeSaleBtn');
+            });
 
-                    // For credit sales, always enable the button
-                    if (paymentMethod === 'credit') {
-                        completeBtn.disabled = false;
-                        return;
+            // Filter functionality for reconciliation reports
+            const filterForm = document.getElementById('reconciliationFilter');
+            if (filterForm) {
+                filterForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const params = new URLSearchParams();
+
+                    for (const [key, value] of formData.entries()) {
+                        if (value) params.append(key, value);
                     }
 
-                    // For other payment methods, enable only if money given >= total
-                    completeBtn.disabled = moneyGiven < totalAmount;
-                }
-
-                // Call this function when money given or payment method changes
-                document.getElementById('money_given').addEventListener('input', updateCompleteButton);
-                document.getElementById('payment_method').addEventListener('change', updateCompleteButton);
-
-                // Also call it when the total changes (like in your calculateTotal function)
-                function calculateTotal() {
-                    let total = 0;
-                    document.querySelectorAll('.fish-item').forEach(item => {
-                        const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
-                        const price = parseFloat(item.querySelector('.price').value) || 0;
-                        total += quantity * price;
-                    });
-                    document.getElementById('totalAmount').textContent = total.toFixed(2);
-                    updateChangeDisplay();
-                    updateCompleteButton(); // Add this line
-                }
-                document.getElementById('salesForm').addEventListener('submit', function(e) {
-                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
-                    const paymentMethod = document.getElementById('payment_method').value;
-                    const change = moneyGiven - totalAmount;
-
-                    // Skip validation for credit sales
-                    if (paymentMethod === 'credit') {
-                        return true;
-                    }
-
-                    // For other payment methods, validate money given
-                    if (change < 0) {
-                        e.preventDefault();
-                        alert(`Insufficient amount given!\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nShort: D${Math.abs(change).toFixed(2)}`);
-                        document.getElementById('money_given').focus();
-                        return false;
-                    }
-
-                    // If change is not exactly 0, show confirmation
-                    if (change !== 0) {
-                        if (!confirm(`Confirm transaction:\n\nTotal: D${totalAmount.toFixed(2)}\nGiven: D${moneyGiven.toFixed(2)}\nChange: D${change.toFixed(2)}`)) {
-                            e.preventDefault();
-                            return false;
-                        }
-                    }
+                    window.location.href = `employee_sales.php?${params.toString()}`;
                 });
-            </script>
+            }
 
-
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Add new item row
-                    document.getElementById('addItem').addEventListener('click', function() {
-                        const newItem = document.querySelector('.fish-item').cloneNode(true);
-                        newItem.querySelector('.quantity').value = '';
-                        newItem.querySelector('.price').value = '';
-                        newItem.querySelector('.available-text').textContent = 'Available: 0 kg';
-                        document.getElementById('itemsContainer').appendChild(newItem);
-                        updateRemoveButtons();
-                    });
-
-                    // Update remove buttons
-                    function updateRemoveButtons() {
-                        document.querySelectorAll('.remove-item').forEach(button => {
-                            button.addEventListener('click', function() {
-                                if (document.querySelectorAll('.fish-item').length > 1) {
-                                    this.closest('.fish-item').remove();
-                                    calculateTotal();
-                                }
-                            });
-                        });
-                    }
-
-                    // Update price and available quantity when fish type changes
-                    document.addEventListener('change', function(e) {
-                        if (e.target.classList.contains('fish-type')) {
-                            const selectedOption = e.target.options[e.target.selectedIndex];
-                            const price = selectedOption.dataset.price || '0';
-                            const available = selectedOption.dataset.available || '0';
-
-                            const itemRow = e.target.closest('.fish-item');
-                            itemRow.querySelector('.price').value = price;
-                            itemRow.querySelector('.available-text').textContent = `Available: ${available} kg`;
-                            itemRow.querySelector('.quantity').max = available;
-
-                            calculateTotal();
-                        }
-                    });
-
-                    // Calculate total when quantity changes
-                    document.addEventListener('input', function(e) {
-                        if (e.target.classList.contains('quantity')) {
-                            calculateTotal();
-                        }
-                    });
-
-                    // Calculate total amount
-                    function calculateTotal() {
-                        let total = 0;
-                        document.querySelectorAll('.fish-item').forEach(item => {
-                            const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
-                            const price = parseFloat(item.querySelector('.price').value) || 0;
-                            total += quantity * price;
-                        });
-                        document.getElementById('totalAmount').textContent = total.toFixed(2);
-                    }
-
-                    // Daily report calculations
-                    const physicalCashInput = document.querySelector('input[name="physical_cash"]');
-                    if (physicalCashInput) {
-                        physicalCashInput.addEventListener('input', updateDailyCalculations);
-                        document.querySelector('input[name="petty_cash"]').addEventListener('input', updateDailyCalculations);
-
-                        function updateDailyCalculations() {
-                            const physicalCash = parseFloat(physicalCashInput.value) || 0;
-                            const pettyCash = parseFloat(document.querySelector('input[name="petty_cash"]').value) || 0;
-                            const cashSalesAmount = <?= $totalCashSales ?>;
-
-                            const deficit = cashSalesAmount - physicalCash;
-                            document.getElementById('deficitDisplay').textContent = deficit.toFixed(2);
-                        }
-                    }
-
-                    // Filter functionality for reconciliation reports
-                    const filterForm = document.getElementById('reconciliationFilter');
-                    if (filterForm) {
-                        filterForm.addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            // In a real implementation, you would fetch filtered data via AJAX
-                            // For this example, we'll just show an alert
-                            alert('Filter functionality would be implemented here with AJAX');
-                        });
-                    }
-
-                    updateRemoveButtons();
-
-                    // Tab functionality
-                    const triggerTabList = [].slice.call(document.querySelectorAll('#employeeTabs button'));
-                    triggerTabList.forEach(function(triggerEl) {
-                        const tabTrigger = new bootstrap.Tab(triggerEl);
-                        triggerEl.addEventListener('click', function(event) {
-                            event.preventDefault();
-                            tabTrigger.show();
-                        });
-                    });
-                });
-                // Add this to your existing JavaScript section
-                document.getElementById('employeeFilter')?.addEventListener('change', function() {
-                    const employeeId = this.value;
-                    if (employeeId) {
-                        window.location.href = `employee_sales.php?employee_id=${employeeId}`;
-                    } else {
-                        window.location.href = 'employee_sales.php';
-                    }
-                });
-                // Update the calculateTotal function to also update the change display
-                function calculateTotal() {
-                    let total = 0;
-                    document.querySelectorAll('.fish-item').forEach(item => {
-                        const quantity = parseFloat(item.querySelector('.quantity').value) || 0;
-                        const price = parseFloat(item.querySelector('.price').value) || 0;
-                        total += quantity * price;
-                    });
-                    document.getElementById('totalAmount').textContent = total.toFixed(2);
-                    updateChangeDisplay(); // Add this line to update the change display
+            // Employee filter change
+            document.getElementById('employeeFilter')?.addEventListener('change', function() {
+                const employeeId = this.value;
+                if (employeeId) {
+                    window.location.href = `employee_sales.php?employee_id=${employeeId}`;
+                } else {
+                    window.location.href = 'employee_sales.php';
                 }
-                // Update the existing change display calculation
-                function updateChangeDisplay() {
-                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
-                    const change = moneyGiven - totalAmount;
-                    const absChange = Math.abs(change);
+            });
 
-                    if (change < 0) {
-                        changeDisplay.textContent = `Short: D${absChange.toFixed(2)}`;
-                        changeDisplay.className = 'badge bg-danger';
-                    } else if (change === 0) {
-                        changeDisplay.textContent = `Exact Amount`;
-                        changeDisplay.className = 'badge bg-success';
-                    } else {
-                        changeDisplay.textContent = `Change: D${absChange.toFixed(2)}`;
-                        changeDisplay.className = 'badge bg-success';
-                    }
+            // Daily report calculations
+            const physicalCashInput = document.querySelector('input[name="physical_cash"]');
+            if (physicalCashInput) {
+                physicalCashInput.addEventListener('input', updateDailyCalculations);
+                document.querySelector('input[name="petty_cash"]').addEventListener('input', updateDailyCalculations);
+
+                function updateDailyCalculations() {
+                    const physicalCash = parseFloat(physicalCashInput.value) || 0;
+                    const pettyCash = parseFloat(document.querySelector('input[name="petty_cash"]').value) || 0;
+                    const cashSalesAmount = <?= $totalCashSales ?>;
+
+                    const deficit = cashSalesAmount - physicalCash;
+                    document.getElementById('deficitDisplay').textContent = deficit.toFixed(2);
                 }
-
-                // Call this whenever money given or total changes
-                document.getElementById('money_given').addEventListener('input', updateChangeDisplay);
-                // Replace the existing sales form submission handler with this:
-                document.getElementById('salesForm').addEventListener('submit', function(e) {
-                    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-                    const moneyGiven = parseFloat(document.getElementById('money_given').value) || 0;
-                    const change = moneyGiven - totalAmount;
-
-                    // If change is not exactly 0, show confirmation
-                    if (change !== 0) {
-                        e.preventDefault(); // Prevent form submission
-
-                        // Format the amounts for display
-                        const formattedTotal = totalAmount.toFixed(2);
-                        const formattedGiven = moneyGiven.toFixed(2);
-                        const formattedChange = Math.abs(change).toFixed(2);
-
-                        // Determine change direction
-                        const changeDirection = change < 0 ? 'short by' : 'give change of';
-
-                        // Show confirmation dialog
-                        const confirmed = confirm(
-                            `Transaction Details:\n\n` +
-                            `Total: D${formattedTotal}\n` +
-                            `Money Given: D${formattedGiven}\n` +
-                            `You need to ${changeDirection} D${formattedChange}\n\n` +
-                            `Do you want to complete this transaction?`
-                        );
-
-                        // If confirmed, submit the form
-                        if (confirmed) {
-                            this.submit();
-                        }
-                    }
-                    // If change is exactly 0, form will submit normally without confirmation
-                });
-                // Add this to the existing JavaScript in employee_sales.php
-                function checkPendingAssignments() {
-                    fetch('check_assignments.php')
-                        .then(response => response.json())
-                        .then(data => {
-                            if (!data.error && data.count > 0) {
-                                // Update badge
-                                const badge = document.querySelector('.nav-link[href="location_management.php"] .badge');
-                                if (badge) {
-                                    badge.textContent = data.count;
-                                } else {
-                                    // Create badge if it doesn't exist
-                                    const link = document.querySelector('.nav-link[href="location_management.php"]');
-                                    if (link) {
-                                        const newBadge = document.createElement('span');
-                                        newBadge.className = 'badge bg-danger rounded-pill';
-                                        newBadge.textContent = data.count;
-                                        link.appendChild(newBadge);
-                                    }
-                                }
-
-                                // Show notification if count increased
-                                if (data.count > (window.lastAssignmentCount || 0)) {
-                                    showAssignmentNotification(data.count);
-                                }
-                                window.lastAssignmentCount = data.count;
-                            }
-                        })
-                        .catch(error => console.error('Error checking assignments:', error));
-                }
-
-                function showAssignmentNotification(count) {
-                    // Check if browser supports notifications
-                    if (!("Notification" in window)) {
-                        console.log("This browser does not support desktop notification");
-                        return;
-                    }
-
-                    // Check if we have permission
-                    if (Notification.permission === "granted") {
-                        createNotification(count);
-                    } else if (Notification.permission !== "denied") {
-                        Notification.requestPermission().then(permission => {
-                            if (permission === "granted") {
-                                createNotification(count);
-                            }
-                        });
-                    }
-
-                    // Fallback alert if notifications are blocked
-                    if (Notification.permission === "denied") {
-                        alert(`You have ${count} pending inventory assignment(s) to review!`);
-                    }
-                }
-
-                function createNotification(count) {
-                    const notification = new Notification("Inventory Assignment Pending", {
-                        body: `You have ${count} pending inventory assignment(s) to review`,
-                        icon: "https://yourdomain.com/path/to/icon.png"
-                    });
-
-                    notification.onclick = function() {
-                        window.focus();
-                        window.location.href = "location_management.php";
-                    };
-                }
-
-                // Check every 5 minutes (300000 ms) or more frequently if needed
-                setInterval(checkPendingAssignments, 300000);
-                // Initial check when page loads
-                document.addEventListener('DOMContentLoaded', checkPendingAssignments);
-            </script>
+            }
+        });
+    </script>
 </body>
 
 </html>

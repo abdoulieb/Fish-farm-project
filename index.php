@@ -785,7 +785,7 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
                     $currentTime = date('H:i:s');
                     $isCurrentlyOpen = ($currentTime >= $shop['opening_time'] && $currentTime <= $shop['closing_time']) && $shop['is_open'];
 
-                    // Get inventory for this location
+                    // Get inventory for this location using the correct columns
                     $inventoryStmt = $pdo->prepare("
                     SELECT li.quantity, ft.name, ft.price_per_kg 
                     FROM location_inventory li
@@ -795,7 +795,7 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
                     $inventoryStmt->execute([$shop['id']]);
                     $locationInventory = $inventoryStmt->fetchAll();
 
-                    // Calculate total kg available
+                    // Calculate total kg available using the quantity column
                     $totalKg = 0;
                     foreach ($locationInventory as $item) {
                         $totalKg += $item['quantity'];
@@ -825,28 +825,27 @@ $partners = $pdo->query("SELECT * FROM partners ORDER BY name")->fetchAll();
                             </p>
                             <p class="mb-2">
                                 <i class="fas fa-fish text-primary me-2"></i>
-                            <h5>Total Available:</h>
-                                <strong colour="green"><?= number_format($totalKg, 2) ?> kg</strong>
-                                </p>
-                                <?php if (!empty($locationInventory)): ?>
-                                    <div class="mt-2">
-                                        <small class="text-muted">Available fish types:</small>
-                                        <ul class="list-unstyled">
-                                            <?php foreach ($locationInventory as $item): ?>
-                                                <li>
-                                                    <strong><?= htmlspecialchars($item['name']) ?></strong> :
-                                                    <strong><?= number_format($item['quantity'], 2) ?> kg</strong>
-                                                </li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                <?php endif; ?>
-                                <p class="mt-2">
-                                    <span class="badge bg-<?= $isCurrentlyOpen ? 'success' : 'danger' ?> shop-status"
-                                        data-shop-id="<?= $shop['id'] ?>">
-                                        <?= $isCurrentlyOpen ? 'Open Now' : 'Closed' ?>
-                                    </span>
-                                </p>
+                                <strong>Total Available:</strong> <span class="fw-bold text-success"><?= number_format($totalKg, 2) ?> kg</span>
+                            </p>
+                            <?php if (!empty($locationInventory)): ?>
+                                <div class="mt-2">
+                                    <small class="text-muted">Available fish types:</small>
+                                    <ul class="list-unstyled">
+                                        <?php foreach ($locationInventory as $item): ?>
+                                            <li>
+                                                <?= htmlspecialchars($item['name']) ?>:
+                                                <strong><?= number_format($item['quantity'], 2) ?> kg</strong>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
+                            <p class="mt-2">
+                                <span class="badge bg-<?= $isCurrentlyOpen ? 'success' : 'danger' ?> shop-status"
+                                    data-shop-id="<?= $shop['id'] ?>">
+                                    <?= $isCurrentlyOpen ? 'Open Now' : 'Closed' ?>
+                                </span>
+                            </p>
                         </div>
                     </div>
                 <?php endforeach; ?>

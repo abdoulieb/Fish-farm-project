@@ -49,13 +49,62 @@ $reportStmt = $pdo->query("
             SELECT SUM(dc.fingerlings_quantity) 
             FROM detailed_costs dc 
             WHERE dc.fish_type_id = ft.id
-        ), 0) - COALESCE(SUM(ff.quantity), 0)) as total_alive
+        ), 0) - COALESCE(SUM(ff.quantity), 0)) as total_alive,
+        COALESCE((
+            SELECT dc.running_cost 
+            FROM detailed_costs dc 
+            WHERE dc.fish_type_id = ft.id
+            ORDER BY dc.date_recorded DESC 
+            LIMIT 1
+        ), 0) as running_cost
     FROM fish_types ft
     LEFT JOIN fish_fatalities ff ON ft.id = ff.fish_type_id
     GROUP BY ft.id, ft.name
     ORDER BY ft.name
 ");
 $fatalityReport = $reportStmt->fetchAll();
+
+// Calculate profitability for each fish type (only if admin)
+if (isAdmin()) {
+    $profitabilityReport = [];
+    foreach ($fatalityReport as $report) {
+        if ($report['total_fingerlings'] > 0) {
+            $survivalRate = ($report['total_alive'] / $report['total_fingerlings']) * 100;
+            $costPerFish = $report['running_cost'] / $report['total_fingerlings'];
+
+            // Apply 3% inflation to running cost
+            $inflatedCost = $report['running_cost'] * 1.10;
+
+            // Average weight per fish in kg (assuming 0.5kg per fish)
+            $avgWeightKg = 0.5;
+            $totalKgAlive = $report['total_alive'] * $avgWeightKg;
+
+            if ($totalKgAlive > 0) {
+                $costPerKg = $inflatedCost / $totalKgAlive;
+
+                $profitabilityReport[] = [
+                    'fish_name' => $report['fish_name'],
+                    'total_alive' => $report['total_alive'],
+                    'total_kg' => $totalKgAlive,
+                    'running_cost' => $report['running_cost'],
+                    'inflated_cost' => $inflatedCost,
+                    'cost_per_kg' => $costPerKg,
+                    'price_10' => $costPerKg * 1.10,
+                    'price_20' => $costPerKg * 1.20,
+                    'price_30' => $costPerKg * 1.30,
+                    'price_40' => $costPerKg * 1.40,
+                    'price_50' => $costPerKg * 1.50,
+                    'price_60' => $costPerKg * 1.60,
+                    'price_70' => $costPerKg * 1.70,
+                    'price_80' => $costPerKg * 1.80,
+                    'price_90' => $costPerKg * 1.90,
+                    'price_100' => $costPerKg * 2.00,
+                    'survival_rate' => $survivalRate
+                ];
+            }
+        }
+    }
+}
 
 include 'navbar.php';
 ?>
@@ -107,6 +156,15 @@ include 'navbar.php';
         .survival-low {
             color: #dc3545;
             font-weight: bold;
+        }
+
+        .profit-table th {
+            background-color: #e9ecef;
+        }
+
+        .profit-badge {
+            font-size: 0.9rem;
+            padding: 0.35em 0.65em;
         }
     </style>
 </head>
@@ -190,6 +248,7 @@ include 'navbar.php';
                                 <th>Total Dead</th>
                                 <th>Total Alive</th>
                                 <th>Survival Rate</th>
+                                <th>Running Cost</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -212,6 +271,7 @@ include 'navbar.php';
                                     <td class="negative"><?= number_format($report['total_dead']) ?></td>
                                     <td class="positive"><?= number_format($report['total_alive']) ?></td>
                                     <td class="<?= $survivalClass ?>"><?= $survivalRate ?>%</td>
+                                    <td>D<?= number_format($report['running_cost'], 2) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -219,6 +279,62 @@ include 'navbar.php';
                 </div>
             </div>
         </div>
+
+        <?php if (isAdmin() && !empty($profitabilityReport)): ?>
+            <!-- Profitability Report Card (Admin Only) -->
+            <div class="card report-card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Profitability Analysis (with 15% inflation)</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered profit-table">
+                            <thead>
+                                <tr>
+                                    <th>Fish Type</th>
+                                    <th>Total Alive (kg)</th>
+                                    <th>Cost per kg</th>
+                                    <th>10% Profit</th>
+                                    <th>20% Profit</th>
+                                    <th>30% Profit</th>
+                                    <th>40% Profit</th>
+                                    <th>50% Profit</th>
+                                    <th>60% Profit</th>
+                                    <th>70% Profit</th>
+                                    <th>80% Profit</th>
+                                    <th>90% Profit</th>
+                                    <th>100% Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($profitabilityReport as $report): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($report['fish_name']) ?></td>
+                                        <td><?= number_format($report['total_kg'], 2) ?></td>
+                                        <td>D<?= number_format($report['cost_per_kg'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_10'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_20'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_30'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_40'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_50'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_60'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_70'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_80'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_90'], 2) ?></td>
+                                        <td>D<?= number_format($report['price_100'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> Calculations assume an average weight of 0.3kg per fish and include a 15% inflation adjustment to running costs.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <div class="mt-4">
             <h4>Recent Fatalities</h4>

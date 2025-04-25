@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
             font-size: 0.8rem;
             color: #6c757d;
         }
-        
+
         .remaining-quantity {
             font-size: 0.8rem;
             color: #28a745;
@@ -313,6 +313,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
 </head>
 
 <body>
+    <?php if (isAdmin()): ?>
+        <!-- Assignment Form -->
+        <h3 class="section-title"><i class="fas fa-fish me-2"></i>Inventory Assignment</h3>
+        <div class="form-container">
+            <h4 class="card-title"><i class="fas fa-plus-circle me-2"></i>Add/Update Inventory Assignment</h4>
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="location_id" class="form-label">Location</label>
+                        <select class="form-select" id="location_id" name="location_id" required>
+                            <option value="">Select Location</option>
+                            <?php foreach ($locations as $location): ?>
+                                <option value="<?= $location['id'] ?>"><?= htmlspecialchars($location['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="employee_id" class="form-label">Employee</label>
+                        <select class="form-select" id="employee_id" name="employee_id" required>
+                            <option value="">Select Employee</option>
+                            <?php foreach ($employees as $employee): ?>
+                                <option value="<?= $employee['id'] ?>"><?= htmlspecialchars($employee['username']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fish_type_id" class="form-label">Fish Type</label>
+                        <select class="form-select" id="fish_type_id" name="fish_type_id" required>
+                            <option value="">Select Fish Type</option>
+                            <?php foreach ($fishTypes as $fishType): ?>
+                                <option value="<?= $fishType['id'] ?>" data-available="<?= $fishType['available_kg'] ?>">
+                                    <?= htmlspecialchars($fishType['name']) ?>
+                                    <span class="available-quantity">(Total: <?= number_format($fishType['available_kg'], 2) ?> kg)</span>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="quantity" class="form-label">Quantity (kg)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0" class="form-control" id="quantity" name="quantity" required placeholder="0.00">
+                            <span class="input-group-text">kg</span>
+                        </div>
+                        <small id="availableDisplay" class="available-quantity"></small>
+                        <small id="remainingDisplay" class="remaining-quantity"></small>
+                    </div>
+                    <div class="col-md-12 mt-3">
+                        <button type="submit" name="add_assignment" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Save Assignment
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    <?php endif; ?>
+
+    <!-- Current Assignments Table -->
+    <h3 class="section-title"><i class="fas fa-clipboard-list me-2"></i>Current Inventory Assignments</h3>
+    <div class="table-responsive">
+        <?php if (count($inventoryAssignments) > 0): ?>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Employee</th>
+                        <th>Fish Type</th>
+                        <th>Quantity (kg)</th>
+                        <th>New Added (kg)</th>
+                        <th>Last Updated</th>
+                        <th>Last Sale</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($inventoryAssignments as $assignment): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($assignment['location_name']) ?></td>
+                            <td><?= htmlspecialchars($assignment['employee_name']) ?></td>
+                            <td><?= htmlspecialchars($assignment['fish_type_name']) ?></td>
+                            <td><?= number_format($assignment['quantity'], 2) ?></td>
+                            <td><?= number_format($assignment['last_assigned_quantity'], 2) ?></td>
+                            <td><?= date('M j, Y g:i a', strtotime($assignment['last_updated'])) ?></td>
+                            <td><?= $assignment['last_sale_date'] ? date('M j, Y g:i a', strtotime($assignment['last_sale_date'])) : 'Never' ?></td>
+                            <td>
+                                <span class="badge badge-<?= strtolower($assignment['status']) ?>">
+                                    <?= $assignment['status_text'] ?>
+                                </span>
+                            </td>
+                            <td class="action-buttons">
+                                <?php if ($assignment['status'] == 'pending' && $_SESSION['user_id'] == $assignment['employee_id']): ?>
+                                    <form method="POST" action="process_assignment.php" style="display: inline;">
+                                        <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
+                                        <input type="hidden" name="action" value="accept">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i> Accept
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="process_assignment.php" style="display: inline;">
+                                        <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
+                                        <input type="hidden" name="action" value="reject">
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure you want to reject this assignment?')">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+
+                                <?php if (isAdmin()): ?>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
+                                        <input type="hidden" name="fish_type_id" value="<?= $assignment['fish_type_id'] ?>">
+                                        <input type="hidden" name="quantity" value="<?= $assignment['quantity'] ?>">
+                                        <button type="submit" name="delete_assignment" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure you want to delete this assignment?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <div class="alert alert-info">No inventory assignments found.</div>
+        <?php endif; ?>
+    </div>
+
     <div class="container">
         <h1 class="my-4 text-primary">Location Management</h1>
 
@@ -388,135 +517,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                 </div>
             </div>
         <?php endif; ?>
-
-        <?php if (isAdmin()): ?>
-            <!-- Assignment Form -->
-            <h3 class="section-title"><i class="fas fa-fish me-2"></i>Inventory Assignment</h3>
-            <div class="form-container">
-                <h4 class="card-title"><i class="fas fa-plus-circle me-2"></i>Add/Update Inventory Assignment</h4>
-                <form method="POST">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label for="location_id" class="form-label">Location</label>
-                            <select class="form-select" id="location_id" name="location_id" required>
-                                <option value="">Select Location</option>
-                                <?php foreach ($locations as $location): ?>
-                                    <option value="<?= $location['id'] ?>"><?= htmlspecialchars($location['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="employee_id" class="form-label">Employee</label>
-                            <select class="form-select" id="employee_id" name="employee_id" required>
-                                <option value="">Select Employee</option>
-                                <?php foreach ($employees as $employee): ?>
-                                    <option value="<?= $employee['id'] ?>"><?= htmlspecialchars($employee['username']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="fish_type_id" class="form-label">Fish Type</label>
-                            <select class="form-select" id="fish_type_id" name="fish_type_id" required>
-                                <option value="">Select Fish Type</option>
-                                <?php foreach ($fishTypes as $fishType): ?>
-                                    <option value="<?= $fishType['id'] ?>" data-available="<?= $fishType['available_kg'] ?>">
-                                        <?= htmlspecialchars($fishType['name']) ?>
-                                        <span class="available-quantity">(Total: <?= number_format($fishType['available_kg'], 2) ?> kg)</span>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="quantity" class="form-label">Quantity (kg)</label>
-                            <div class="input-group">
-                                <input type="number" step="0.01" min="0" class="form-control" id="quantity" name="quantity" required placeholder="0.00">
-                                <span class="input-group-text">kg</span>
-                            </div>
-                            <small id="availableDisplay" class="available-quantity"></small>
-                            <small id="remainingDisplay" class="remaining-quantity"></small>
-                        </div>
-                        <div class="col-md-12 mt-3">
-                            <button type="submit" name="add_assignment" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i> Save Assignment
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        <?php endif; ?>
-
-        <!-- Current Assignments Table -->
-        <h3 class="section-title"><i class="fas fa-clipboard-list me-2"></i>Current Inventory Assignments</h3>
-        <div class="table-responsive">
-            <?php if (count($inventoryAssignments) > 0): ?>
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Location</th>
-                            <th>Employee</th>
-                            <th>Fish Type</th>
-                            <th>Quantity (kg)</th>
-                            <th>New Added (kg)</th>
-                            <th>Last Updated</th>
-                            <th>Last Sale</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($inventoryAssignments as $assignment): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($assignment['location_name']) ?></td>
-                                <td><?= htmlspecialchars($assignment['employee_name']) ?></td>
-                                <td><?= htmlspecialchars($assignment['fish_type_name']) ?></td>
-                                <td><?= number_format($assignment['quantity'], 2) ?></td>
-                                <td><?= number_format($assignment['last_assigned_quantity'], 2) ?></td>
-                                <td><?= date('M j, Y g:i a', strtotime($assignment['last_updated'])) ?></td>
-                                <td><?= $assignment['last_sale_date'] ? date('M j, Y g:i a', strtotime($assignment['last_sale_date'])) : 'Never' ?></td>
-                                <td>
-                                    <span class="badge badge-<?= strtolower($assignment['status']) ?>">
-                                        <?= $assignment['status_text'] ?>
-                                    </span>
-                                </td>
-                                <td class="action-buttons">
-                                    <?php if ($assignment['status'] == 'pending' && $_SESSION['user_id'] == $assignment['employee_id']): ?>
-                                        <form method="POST" action="process_assignment.php" style="display: inline;">
-                                            <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
-                                            <input type="hidden" name="action" value="accept">
-                                            <button type="submit" class="btn btn-sm btn-success">
-                                                <i class="fas fa-check"></i> Accept
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="process_assignment.php" style="display: inline;">
-                                            <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
-                                            <input type="hidden" name="action" value="reject">
-                                            <button type="submit" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to reject this assignment?')">
-                                                <i class="fas fa-times"></i> Reject
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-
-                                    <?php if (isAdmin()): ?>
-                                        <form method="POST" style="display: inline;">
-                                            <input type="hidden" name="assignment_id" value="<?= $assignment['id'] ?>">
-                                            <input type="hidden" name="fish_type_id" value="<?= $assignment['fish_type_id'] ?>">
-                                            <input type="hidden" name="quantity" value="<?= $assignment['quantity'] ?>">
-                                            <button type="submit" name="delete_assignment" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure you want to delete this assignment?')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <div class="alert alert-info">No inventory assignments found.</div>
-            <?php endif; ?>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -549,7 +549,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
                     // Fetch current assignments for this fish type
                     const response = await fetch(`get_assigned_quantity.php?fish_type_id=${fishTypeId}`);
                     const data = await response.json();
-                    
+
                     const selectedOption = fishTypeSelect.options[fishTypeSelect.selectedIndex];
                     const totalAvailable = parseFloat(selectedOption.dataset.available) || 0;
                     const totalAssigned = parseFloat(data.total_assigned) || 0;
@@ -557,7 +557,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
 
                     availableDisplay.textContent = `Total in inventory: ${totalAvailable.toFixed(2)} kg`;
                     remainingDisplay.textContent = `Remaining available: ${remaining.toFixed(2)} kg`;
-                    
+
                     // Set max quantity to remaining available
                     quantityInput.max = remaining;
                     quantityInput.title = `Maximum: ${remaining.toFixed(2)} kg`;
@@ -576,11 +576,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assignment']))
 
             if (fishTypeSelect && quantityInput && availableDisplay) {
                 fishTypeSelect.addEventListener('change', updateAvailableQuantity);
-                
+
                 quantityInput.addEventListener('input', function() {
                     const max = parseFloat(this.max) || 0;
                     const quantity = parseFloat(this.value) || 0;
-                    
+
                     if (quantity > max) {
                         this.setCustomValidity(`Cannot assign more than ${max.toFixed(2)} kg`);
                         remainingDisplay.innerHTML = `<span class="text-danger">Cannot assign more than ${max.toFixed(2)} kg</span>`;
