@@ -73,10 +73,10 @@ if (isAdmin()) {
             $costPerFish = $report['running_cost'] / $report['total_fingerlings'];
 
             // Apply 3% inflation to running cost
-            $inflatedCost = $report['running_cost'] * 1.10;
+            $inflatedCost = $report['running_cost'] * 1.36;
 
             // Average weight per fish in kg (assuming 0.5kg per fish)
-            $avgWeightKg = 0.5;
+            $avgWeightKg = 0.3;
             $totalKgAlive = $report['total_alive'] * $avgWeightKg;
 
             if ($totalKgAlive > 0) {
@@ -284,7 +284,7 @@ include 'navbar.php';
             <!-- Profitability Report Card (Admin Only) -->
             <div class="card report-card mt-4">
                 <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Profitability Analysis (with 15% inflation)</h4>
+                    <h4 class="mb-0">Profitability Analysis (with 36% inflation)</h4>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -329,7 +329,7 @@ include 'navbar.php';
                     </div>
                     <div class="mt-3">
                         <div class="alert alert-info">
-                            <strong>Note:</strong> Calculations assume an average weight of 0.3kg per fish and include a 15% inflation adjustment to running costs.
+                            <strong>Note:</strong> Calculations assume an average weight of 0.3kg per fish and include a 36% inflation adjustment to running costs.
                         </div>
                     </div>
                 </div>

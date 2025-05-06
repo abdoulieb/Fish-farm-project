@@ -436,7 +436,7 @@ $recentOrders = array_slice($allOrders, 0, 10);
                 }
             }
         });
-
+c
         // Revenue vs Cost Chart
         const revenueCostCtx = document.getElementById('revenueCostChart').getContext('2d');
         const revenueCostChart = new Chart(revenueCostCtx, {

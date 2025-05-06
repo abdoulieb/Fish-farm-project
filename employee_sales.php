@@ -281,24 +281,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     // Handle daily report submission
+    // Handle daily report submission
     elseif (isset($_POST['submit_daily_report'])) {
         $pettyCash = floatval($_POST['petty_cash'] ?? 0);
         $physicalCash = floatval($_POST['physical_cash'] ?? 0);
 
-        $deficit = $totalCashSales - $physicalCash;
+        // Calculate expected cash as petty cash + total cash sales
+        $expectedCash = $pettyCash + $totalCashSales;
+        $deficit = $expectedCash - $physicalCash;
         $totalCash = $physicalCash + $pettyCash;
 
         // Save the reconciliation
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO cash_reconciliations 
-                (employee_id, report_date, expected_amount, physical_cash, petty_cash, deficit, total_cash)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ");
+            INSERT INTO cash_reconciliations 
+            (employee_id, report_date, expected_amount, physical_cash, petty_cash, deficit, total_cash)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
             $stmt->execute([
                 $_SESSION['user_id'],
                 $today,
-                $totalCashSales,
+                $expectedCash,  // Now includes petty cash
                 $physicalCash,
                 $pettyCash,
                 $deficit,
@@ -1248,7 +1251,9 @@ include 'navbar.php';
                     const pettyCash = parseFloat(document.querySelector('input[name="petty_cash"]').value) || 0;
                     const cashSalesAmount = <?= $totalCashSales ?>;
 
-                    const deficit = cashSalesAmount - physicalCash;
+                    // Calculate expected cash as petty cash + total cash sales
+                    const expectedCash = pettyCash + cashSalesAmount;
+                    const deficit = expectedCash - physicalCash;
                     document.getElementById('deficitDisplay').textContent = deficit.toFixed(2);
                 }
             }
