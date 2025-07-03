@@ -949,7 +949,7 @@ include 'navbar.php';
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6">
-                                                <p><strong>Expected Cash:</strong> D<?= number_format($totalCashSales, 2) ?></p>
+                                                <p><strong>Total Sale:</strong> D<?= number_format($totalCashSales, 2) ?></p>
                                             </div>
                                             <div class="col-md-6">
                                                 <p><strong>Deficit/Surplus:</strong> D<span id="deficitDisplay">0.00</span></p>
@@ -1068,7 +1068,7 @@ include 'navbar.php';
                                         <th>Employee</th>
                                     <?php endif; ?>
                                     <th>Date</th>
-                                    <th>Expected (D)</th>
+                                    <th>total sale (D)</th>
                                     <th>Physical Cash (D)</th>
                                     <th>Petty Cash (D)</th>
                                     <th>Total Cash (D)</th>

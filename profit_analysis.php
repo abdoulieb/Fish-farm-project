@@ -15,7 +15,7 @@ function toFloat($value)
     return (float)$value;
 }
 
-// Get all sales data with fish type information
+// Get all sales data
 $salesStmt = $pdo->query("
     SELECT 
         s.id,
@@ -25,22 +25,16 @@ $salesStmt = $pdo->query("
         GROUP_CONCAT(ft.name SEPARATOR ', ') as fish_names,
         SUM(si.quantity_kg) as total_kg,
         s.payment_method
-    FROM 
-        sales s
-    JOIN 
-        users u ON s.employee_id = u.id
-    LEFT JOIN 
-        sale_items si ON s.id = si.sale_id
-    LEFT JOIN
-        fish_types ft ON si.fish_type_id = ft.id
-    GROUP BY 
-        s.id
-    ORDER BY 
-        s.sale_date DESC
+    FROM sales s
+    JOIN users u ON s.employee_id = u.id
+    LEFT JOIN sale_items si ON s.id = si.sale_id
+    LEFT JOIN fish_types ft ON si.fish_type_id = ft.id
+    GROUP BY s.id
+    ORDER BY s.sale_date DESC
 ");
 $allSales = $salesStmt->fetchAll();
 
-// Get all orders data with fish type information
+// Get all orders data
 $ordersStmt = $pdo->query("
     SELECT 
         o.id,
@@ -50,99 +44,111 @@ $ordersStmt = $pdo->query("
         GROUP_CONCAT(ft.name SEPARATOR ', ') as fish_names,
         SUM(oi.quantity_kg) as total_kg,
         o.status
-    FROM 
-        orders o
-    JOIN 
-        users u ON o.user_id = u.id
-    LEFT JOIN 
-        order_items oi ON o.id = oi.order_id
-    LEFT JOIN
-        fish_types ft ON oi.fish_type_id = ft.id
-    WHERE 
-        o.status = 'completed'
-    GROUP BY 
-        o.id
-    ORDER BY 
-        o.order_date DESC
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    LEFT JOIN fish_types ft ON oi.fish_type_id = ft.id
+    WHERE o.status = 'completed'
+    GROUP BY o.id
+    ORDER BY o.order_date DESC
 ");
 $allOrders = $ordersStmt->fetchAll();
 
-// Get the sum of running costs from detailed_costs table
+// Get running costs
 $runningCostsStmt = $pdo->query("
     SELECT 
-        SUM(running_cost) as total_running_cost,
-        COUNT(DISTINCT fish_type_id) as fish_types_count
-    FROM 
-        (SELECT 
+        SUM(running_cost) as total_running_cost
+    FROM (
+        SELECT 
             fish_type_id, 
             running_cost,
             date_recorded,
             ROW_NUMBER() OVER (PARTITION BY fish_type_id ORDER BY date_recorded DESC) as rn
-         FROM 
-            detailed_costs
-        ) latest
-    WHERE 
-        rn = 1
+        FROM detailed_costs
+    ) latest
+    WHERE rn = 1
 ");
 $runningCostsData = $runningCostsStmt->fetch();
 $totalRunningCost = toFloat($runningCostsData['total_running_cost']);
 
-// Calculate total revenue from sales and completed orders
+// Calculate total revenue
 $totalRevenue = 0;
-foreach ($allSales as $sale) {
-    $totalRevenue += $sale['revenue'];
-}
-foreach ($allOrders as $order) {
-    $totalRevenue += $order['revenue'];
-}
+foreach ($allSales as $sale) $totalRevenue += $sale['revenue'];
+foreach ($allOrders as $order) $totalRevenue += $order['revenue'];
 
-// Calculate profits based on the provided formulas
-$totalProfit = $totalRevenue - $totalRunningCost;
+// Calculate profits with inflation
+$inflatedTotalCost = $totalRunningCost * 1.36;
+$totalProfit = $totalRevenue - $inflatedTotalCost;
 $profitPercent = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
-$profitPerMonth = $totalProfit / 6;
-$profitPercentPerMonth = $profitPercent / 6;
 
-// Get fish performance data
+// Get fish performance data (consistent with fatality_records.php)
 $fishPerformanceStmt = $pdo->query("
     SELECT 
         ft.id,
         ft.name,
+        COALESCE((
+            SELECT SUM(dc.fingerlings_quantity) 
+            FROM detailed_costs dc 
+            WHERE dc.fish_type_id = ft.id
+        ), 0) as total_fingerlings,
+        COALESCE(SUM(ff.quantity), 0) as total_dead,
+        (COALESCE((
+            SELECT SUM(dc.fingerlings_quantity) 
+            FROM detailed_costs dc 
+            WHERE dc.fish_type_id = ft.id
+        ), 0) - COALESCE(SUM(ff.quantity), 0)) as total_alive,
+        COALESCE((
+            SELECT dc.running_cost 
+            FROM detailed_costs dc 
+            WHERE dc.fish_type_id = ft.id
+            ORDER BY dc.date_recorded DESC 
+            LIMIT 1
+        ), 0) as running_cost,
         SUM(COALESCE(si.quantity_kg, 0) + COALESCE(oi.quantity_kg, 0)) as total_kg,
-        SUM(COALESCE(s.total_amount, 0) + COALESCE(o.total_amount, 0)) as revenue,
-        COALESCE(rc.running_cost, 0) as running_cost,
-        SUM(COALESCE(s.total_amount, 0) + COALESCE(o.total_amount, 0)) - 
-        COALESCE(rc.running_cost, 0) as profit
-    FROM 
-        fish_types ft
-    LEFT JOIN 
-        sale_items si ON ft.id = si.fish_type_id
-    LEFT JOIN 
-        sales s ON si.sale_id = s.id
-    LEFT JOIN 
-        order_items oi ON ft.id = oi.fish_type_id
-    LEFT JOIN 
-        orders o ON oi.order_id = o.id AND o.status = 'completed'
-    LEFT JOIN 
-        (SELECT 
-            dc.fish_type_id,
-            dc.running_cost
-         FROM 
-            detailed_costs dc
-         JOIN 
-            (SELECT fish_type_id, MAX(date_recorded) as latest_date 
-             FROM detailed_costs GROUP BY fish_type_id) latest 
-         ON dc.fish_type_id = latest.fish_type_id AND dc.date_recorded = latest.latest_date
-        ) rc ON ft.id = rc.fish_type_id
-    GROUP BY 
-        ft.id
-    ORDER BY 
-        profit DESC
+        SUM(COALESCE(s.total_amount, 0) + COALESCE(o.total_amount, 0)) as revenue
+    FROM fish_types ft
+    LEFT JOIN sale_items si ON ft.id = si.fish_type_id
+    LEFT JOIN sales s ON si.sale_id = s.id
+    LEFT JOIN order_items oi ON ft.id = oi.fish_type_id
+    LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'completed'
+    LEFT JOIN fish_fatalities ff ON ft.id = ff.fish_type_id
+    GROUP BY ft.id, ft.name
+    ORDER BY ft.name
 ");
 $fishPerformance = $fishPerformanceStmt->fetchAll();
 
-// Recent sales for display
+// Calculate profitability with consistent 36% inflation
+$profitabilityReport = [];
+foreach ($fishPerformance as $fish) {
+    if ($fish['total_fingerlings'] > 0) {
+        $inflatedCost = $fish['running_cost'] * 1.36;
+        $avgWeightKg = 0.3;
+        $totalKgAlive = $fish['total_alive'] * $avgWeightKg;
+
+        if ($totalKgAlive > 0) {
+            $costPerKg = $inflatedCost / $totalKgAlive;
+            $profit = $fish['revenue'] - $inflatedCost;
+            $profitPercent = $fish['revenue'] > 0 ? ($profit / $fish['revenue']) * 100 : 0;
+
+            $profitabilityReport[$fish['id']] = [
+                'total_kg' => $totalKgAlive,
+                'running_cost' => $fish['running_cost'],
+                'inflated_cost' => $inflatedCost,
+                'cost_per_kg' => $costPerKg,
+                'price_10' => $costPerKg * 1.10,
+                'price_20' => $costPerKg * 1.20,
+                'price_30' => $costPerKg * 1.30,
+                'price_40' => $costPerKg * 1.40,
+                'price_50' => $costPerKg * 1.50,
+                'profit' => $profit,
+                'profit_percent' => $profitPercent
+            ];
+        }
+    }
+}
+
+// Recent data for display
 $recentSales = array_slice($allSales, 0, 10);
-// Recent orders for display
 $recentOrders = array_slice($allOrders, 0, 10);
 ?>
 
@@ -179,29 +185,13 @@ $recentOrders = array_slice($allOrders, 0, 10);
             margin-bottom: 30px;
         }
 
-        .filter-buttons .btn {
-            margin-right: 5px;
-            margin-bottom: 5px;
+        .profit-badge {
+            font-size: 0.8rem;
+            padding: 0.25em 0.4em;
         }
 
-        .cost-breakdown {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-
-        .cost-breakdown-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-
-        .monthly-metrics {
-            background-color: #e9ecef;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+        .table th {
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -228,16 +218,15 @@ $recentOrders = array_slice($allOrders, 0, 10);
             </div>
             <div class="col-md-3">
                 <div class="summary-card <?= $totalProfit >= 0 ? 'bg-success text-white' : 'bg-danger text-white' ?>">
-                    <h5>Total Profit</h5>
+                    <h5>Total Profit (36% inflation)</h5>
                     <p class="h4">D<?= number_format($totalProfit, 2) ?></p>
                     <p class="h5"><?= number_format($profitPercent, 2) ?>%</p>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="summary-card <?= $profitPerMonth >= 0 ? 'bg-info text-white' : 'bg-warning text-white' ?>">
-                    <h5>Profit Per Month (6 months)</h5>
-                    <p class="h4">D<?= number_format($profitPerMonth, 2) ?></p>
-                    <p class="h5"><?= number_format($profitPercentPerMonth, 2) ?>%</p>
+                <div class="summary-card bg-info text-white">
+                    <h5>Avg. Cost per kg</h5>
+                    <p class="h4">D<?= number_format($totalRunningCost > 0 ? ($inflatedTotalCost / array_sum(array_column($profitabilityReport, 'total_kg'))) : 0, 2) ?></p>
                 </div>
             </div>
         </div>
@@ -247,7 +236,7 @@ $recentOrders = array_slice($allOrders, 0, 10);
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5>Profit by Fish Type</h5>
+                        <h5>Profit by Fish Type (36% inflation)</h5>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -259,7 +248,7 @@ $recentOrders = array_slice($allOrders, 0, 10);
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5>Revenue vs Cost</h5>
+                        <h5>Revenue vs Inflated Cost</h5>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -273,7 +262,7 @@ $recentOrders = array_slice($allOrders, 0, 10);
         <!-- Fish Performance Table -->
         <div class="card mt-4">
             <div class="card-header">
-                <h5>Fish Type Performance</h5>
+                <h5>Fish Type Performance (with 36% inflation)</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -281,32 +270,47 @@ $recentOrders = array_slice($allOrders, 0, 10);
                         <thead>
                             <tr>
                                 <th>Fish Type</th>
-                                <th>Quantity (kg)</th>
+                                <th>Total Alive (kg)</th>
                                 <th>Revenue</th>
-                                <th>Running Cost</th>
+                                <th>Original Cost</th>
+                                <th>Inflated Cost</th>
                                 <th>Profit</th>
                                 <th>Profit %</th>
+                                <th>Target Prices</th>
                             </tr>
                         </thead>
                         <tbody>
+                        <tbody>
                             <?php foreach ($fishPerformance as $fish):
-                                $fishProfitPercent = $fish['revenue'] > 0 ? ($fish['profit'] / $fish['revenue']) * 100 : 0;
-                            ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($fish['name']) ?></td>
-                                    <td><?= number_format($fish['total_kg'], 2) ?></td>
-                                    <td>D<?= number_format($fish['revenue'], 2) ?></td>
-                                    <td>D<?= number_format($fish['running_cost'], 2) ?></td>
-                                    <td class="<?= $fish['profit'] >= 0 ? 'positive' : 'negative' ?>">
-                                        D<?= number_format($fish['profit'], 2) ?>
-                                    </td>
-                                    <td class="<?= $fishProfitPercent >= 0 ? 'positive' : 'negative' ?>">
-                                        <?= number_format($fishProfitPercent, 2) ?>%
-                                    </td>
-                                </tr>
+                                $profitData = $profitabilityReport[$fish['id']] ?? null;
+                                if ($profitData): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($fish['name']) ?></td>
+                                        <td><?= number_format($profitData['total_kg'], 2) ?></td>
+                                        <td>D<?= number_format($fish['revenue'], 2) ?></td>
+                                        <td>D<?= number_format($fish['running_cost'], 2) ?></td>
+                                        <td>D<?= number_format($profitData['inflated_cost'], 2) ?></td>
+                                        <td class="<?= $profitData['profit'] >= 0 ? 'positive' : 'negative' ?>">
+                                            D<?= number_format($profitData['profit'], 2) ?>
+                                        </td>
+                                        <td class="<?= $profitData['profit_percent'] >= 0 ? 'positive' : 'negative' ?>">
+                                            <?= number_format($profitData['profit_percent'], 2) ?>%
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <span class="badge bg-primary profit-badge">10%: D<?= number_format($profitData['price_10'], 2) ?></span>
+                                                <span class="badge bg-success profit-badge">20%: D<?= number_format($profitData['price_20'], 2) ?></span>
+                                                <span class="badge bg-info profit-badge">30%: D<?= number_format($profitData['price_30'], 2) ?></span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <strong>Note:</strong> All calculations include 36% inflation adjustment. Target prices based on cost per kg with inflation.
                 </div>
             </div>
         </div>
@@ -388,93 +392,140 @@ $recentOrders = array_slice($allOrders, 0, 10);
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <script>
         // Fish Profit Chart
-        const fishProfitCtx = document.getElementById('fishProfitChart').getContext('2d');
-        const fishProfitChart = new Chart(fishProfitCtx, {
-            type: 'bar',
-            data: {
-                labels: [<?= implode(',', array_map(function ($fish) {
-                                return "'" . htmlspecialchars($fish['name']) . "'";
-                            }, $fishPerformance)) ?>],
-                datasets: [{
-                    label: 'Profit (D)',
-                    data: [<?= implode(',', array_column($fishPerformance, 'profit')) ?>],
-                    backgroundColor: [
-                        <?php foreach ($fishPerformance as $fish): ?> '<?= $fish['profit'] >= 0 ? "rgba(40, 167, 69, 0.7)" : "rgba(220, 53, 69, 0.7)" ?>',
-                        <?php endforeach; ?>
-                    ],
-                    borderColor: [
-                        <?php foreach ($fishPerformance as $fish): ?> '<?= $fish['profit'] >= 0 ? "rgba(40, 167, 69, 1)" : "rgba(220, 53, 69, 1)" ?>',
-                        <?php endforeach; ?>
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return 'Profit: D' + context.raw.toFixed(2);
-                            }
-                        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const fishProfitCtx = document.getElementById('fishProfitChart').getContext('2d');
+
+            // Prepare chart data
+            const fishLabels = [
+                <?php
+                foreach ($fishPerformance as $fish) {
+                    $profitData = $profitabilityReport[$fish['id']] ?? null;
+                    if ($profitData) {
+                        echo "'" . htmlspecialchars($fish['name']) . "',";
                     }
+                }
+                ?>
+            ].filter(label => label);
+
+            const fishProfitData = [
+                <?php
+                foreach ($fishPerformance as $fish) {
+                    $profitData = $profitabilityReport[$fish['id']] ?? null;
+                    if ($profitData) {
+                        echo $profitData['profit'] . ",";
+                    }
+                }
+                ?>
+            ].filter(value => value !== undefined);
+
+            const fishBackgroundColors = [
+                <?php
+                foreach ($fishPerformance as $fish) {
+                    $profitData = $profitabilityReport[$fish['id']] ?? null;
+                    if ($profitData) {
+                        echo $profitData['profit'] >= 0
+                            ? "'rgba(40, 167, 69, 0.7)',"
+                            : "'rgba(220, 53, 69, 0.7)',";
+                    }
+                }
+                ?>
+            ].filter(color => color);
+
+            // Create the chart
+            new Chart(fishProfitCtx, {
+                type: 'bar',
+                data: {
+                    labels: fishLabels,
+                    datasets: [{
+                        label: 'Profit (D)',
+                        data: fishProfitData,
+                        backgroundColor: fishBackgroundColors,
+                        borderWidth: 1
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return 'D' + value;
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Profit: D${context.raw.toFixed(2)}`;
+                                }
                             }
                         }
-                    }
-                }
-            }
-        });
-c
-        // Revenue vs Cost Chart
-        const revenueCostCtx = document.getElementById('revenueCostChart').getContext('2d');
-        const revenueCostChart = new Chart(revenueCostCtx, {
-            type: 'bar',
-            data: {
-                labels: [<?= implode(',', array_map(function ($fish) {
-                                return "'" . htmlspecialchars($fish['name']) . "'";
-                            }, $fishPerformance)) ?>],
-                datasets: [{
-                        label: 'Revenue',
-                        data: [<?= implode(',', array_column($fishPerformance, 'revenue')) ?>],
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
                     },
-                    {
-                        label: 'Running Cost',
-                        data: [<?= implode(',', array_column($fishPerformance, 'running_cost')) ?>],
-                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return 'D' + value;
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'D' + value;
+                                }
                             }
                         }
                     }
                 }
-            }
+            });
+
+            // Revenue vs Cost Chart
+            const revenueCostCtx = document.getElementById('revenueCostChart').getContext('2d');
+
+            const revenueData = [
+                <?php
+                foreach ($fishPerformance as $fish) {
+                    echo $fish['revenue'] . ",";
+                }
+                ?>
+            ];
+
+            const costData = [
+                <?php
+                foreach ($fishPerformance as $fish) {
+                    $profitData = $profitabilityReport[$fish['id']] ?? null;
+                    echo $profitData ? $profitData['inflated_cost'] . "," : "0,";
+                }
+                ?>
+            ];
+
+            new Chart(revenueCostCtx, {
+                type: 'bar',
+                data: {
+                    labels: fishLabels,
+                    datasets: [{
+                            label: 'Revenue',
+                            data: revenueData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Inflated Cost (36%)',
+                            data: costData,
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'D' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         });
     </script>
 </body>
